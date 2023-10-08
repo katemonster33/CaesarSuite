@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Caesar", "Caesar\Caesar.csproj", "{71C43C61-7DC7-4D47-9947-1DD73E559911}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Caesar", "Caesar\Caesar.csproj", "{71C43C61-7DC7-4D47-9947-1DD73E559911}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trafo", "Trafo\Trafo.csproj", "{42A6F1FD-82CC-4721-BF0C-1658AE902875}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Trafo", "Trafo\Trafo.csproj", "{42A6F1FD-82CC-4721-BF0C-1658AE902875}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Diogenes", "Diogenes\Diogenes.csproj", "{2216DB99-EAAC-46A8-B99A-28D659907DE7}"
 EndProject
@@ -23,7 +23,6 @@ Global
 		{42A6F1FD-82CC-4721-BF0C-1658AE902875}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{42A6F1FD-82CC-4721-BF0C-1658AE902875}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2216DB99-EAAC-46A8-B99A-28D659907DE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2216DB99-EAAC-46A8-B99A-28D659907DE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2216DB99-EAAC-46A8-B99A-28D659907DE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2216DB99-EAAC-46A8-B99A-28D659907DE7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection

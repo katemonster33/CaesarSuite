@@ -9,7 +9,7 @@ namespace Caesar
 {
 
     // DIAGJOB *__cdecl DIOpenDiagService(DI_ECUINFO *ecuHandle, char *serviceName, int ecuErrors)
-    public class DiagService
+    public class DiagService : CaesarObject
     {
         /*
     5	DT	DATA
@@ -99,8 +99,6 @@ namespace Caesar
 
         public byte[] RequestBytes;
 
-        private long BaseAddress;
-        public int PoolIndex;
 
         // these are inlined preparations
         public List<DiagPreparation> InputPreparations = new List<DiagPreparation>();
@@ -109,51 +107,56 @@ namespace Caesar
 
         [Newtonsoft.Json.JsonIgnore]
         public ECU ParentECU;
-        private CTFLanguage Language;
-
-        public void Restore(CTFLanguage language, ECU parentEcu) 
-        {
-            Language = language;
-            ParentECU = parentEcu;
-            foreach (DiagPreparation dp in InputPreparations)
-            {
-                dp.Restore(language, parentEcu, this);
-            }
-            foreach (List<DiagPreparation> dpl in OutputPreparations)
-            {
-                foreach (DiagPreparation dp in dpl)
-                {
-                    dp.Restore(language, parentEcu, this);
-                }
-            }
-            /*
-            // nothing in comparam to restore
-            foreach (ComParameter cp in DiagComParameters) 
-            {
-            
-            }
-            */
-        }
 
         public DiagService() 
         {
             RequestBytes = new byte[0];
             ParentECU = new ECU();
-            Language = new CTFLanguage();
         }
 
         public DiagService(CaesarReader reader, CTFLanguage language, long baseAddress, int poolIndex, ECU parentEcu) 
         {
-            ParentECU = parentEcu;
-            Language = language;
-            PoolIndex = poolIndex;
-            BaseAddress = baseAddress;
-            reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
+
+        }
+
+        public long GetCALInt16Offset(CaesarReader reader) 
+        {
+            reader.BaseStream.Seek(Address, SeekOrigin.Begin);
 
             ulong bitflags = reader.ReadUInt32();
             ulong bitflagExtended = reader.ReadUInt32();
 
-            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
+            reader.ReadBitflagStringWithReader(ref bitflags, Address); // Qualifier
+            reader.ReadBitflagInt32(ref bitflags); // Name
+            reader.ReadBitflagInt32(ref bitflags); // Description
+            reader.ReadBitflagUInt16(ref bitflags); // Type
+            reader.ReadBitflagUInt16(ref bitflags); // IsExecutable 
+            if (reader.CheckAndAdvanceBitflag(ref bitflags))
+            {
+                return reader.BaseStream.Position;
+            }
+            else 
+            {
+                return -1;
+            }
+        }
+
+
+        public void PrintDebug() 
+        {
+            Console.WriteLine($"{Qualifier} - ReqBytes: {RequestBytes_Count}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, ComParams: {T_ComParam_Count}, Preparation: {U_prep_Count}, V: {V_Count}, OutPres: {W_OutPres_Count}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodeCount}, field50: {Field50}");
+            Console.WriteLine($"BaseAddress @ 0x{Address:X}, NR: {NegativeResponseName}");
+            Console.WriteLine($"V @ 0x{Address + V_Offset:X}, count: {V_Count}");
+        }
+
+        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        {
+            ParentECU = currentEcu ?? new ECU();
+
+            ulong bitflags = reader.ReadUInt32();
+            ulong bitflagExtended = reader.ReadUInt32();
+
+            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, Address);
 
             Name = reader.ReadBitflagStringRef(ref bitflags, language);
             Description = reader.ReadBitflagStringRef(ref bitflags, language);
@@ -161,9 +164,9 @@ namespace Caesar
             DataClass_ServiceType = reader.ReadBitflagUInt16(ref bitflags);
             DataClass_ServiceTypeShifted = 1 << (DataClass_ServiceType - 1);
 
-            IsExecutable = reader.ReadBitflagUInt16(ref bitflags); ;
-            ClientAccessLevel = reader.ReadBitflagUInt16(ref bitflags); ;
-            SecurityAccessLevel = reader.ReadBitflagUInt16(ref bitflags); ;
+            IsExecutable = reader.ReadBitflagUInt16(ref bitflags);
+            ClientAccessLevel = reader.ReadBitflagUInt16(ref bitflags);
+            SecurityAccessLevel = reader.ReadBitflagUInt16(ref bitflags);
 
             T_ComParam_Count = reader.ReadBitflagInt32(ref bitflags);
             T_ComParam_Offset = reader.ReadBitflagInt32(ref bitflags);
@@ -174,7 +177,7 @@ namespace Caesar
             R_Count = reader.ReadBitflagInt32(ref bitflags);
             R_Offset = reader.ReadBitflagInt32(ref bitflags);
 
-            InputRefNameMaybe = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
+            InputRefNameMaybe = reader.ReadBitflagStringWithReader(ref bitflags, Address);
 
             U_prep_Count = reader.ReadBitflagInt32(ref bitflags);
             U_prep_Offset = reader.ReadBitflagInt32(ref bitflags);
@@ -191,9 +194,9 @@ namespace Caesar
 
             Field50 = reader.ReadBitflagUInt16(ref bitflags);
 
-            NegativeResponseName = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress); // negative response name
-            UnkStr3 = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
-            UnkStr4 = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
+            NegativeResponseName = reader.ReadBitflagStringWithReader(ref bitflags, Address); // negative response name
+            UnkStr3 = reader.ReadBitflagStringWithReader(ref bitflags, Address);
+            UnkStr4 = reader.ReadBitflagStringWithReader(ref bitflags, Address);
 
             P_Count = reader.ReadBitflagInt32(ref bitflags);
             P_Offset = reader.ReadBitflagInt32(ref bitflags);
@@ -205,10 +208,10 @@ namespace Caesar
             S_Offset = reader.ReadBitflagInt32(ref bitflags);
 
             bitflags = bitflagExtended;
-            
+
             X_Count = reader.ReadBitflagInt32(ref bitflags);
             X_Offset = reader.ReadBitflagInt32(ref bitflags);
-                
+
             Y_Count = reader.ReadBitflagInt32(ref bitflags);
             Y_Offset = reader.ReadBitflagInt32(ref bitflags);
 
@@ -217,10 +220,10 @@ namespace Caesar
 
             if (RequestBytes_Count != null && RequestBytes_Offset != null && RequestBytes_Count > 0)
             {
-                reader.BaseStream.Seek(baseAddress + (long)RequestBytes_Offset, SeekOrigin.Begin);
+                reader.BaseStream.Seek(Address + (long)RequestBytes_Offset, SeekOrigin.Begin);
                 RequestBytes = reader.ReadBytes((int)RequestBytes_Count);
             }
-            else 
+            else
             {
                 RequestBytes = new byte[] { };
             }
@@ -231,7 +234,7 @@ namespace Caesar
             {
                 for (int prepIndex = 0; prepIndex < U_prep_Count; prepIndex++)
                 {
-                    long presentationTableOffset = baseAddress + (long)U_prep_Offset;
+                    long presentationTableOffset = Address + (long)U_prep_Offset;
                     reader.BaseStream.Seek(presentationTableOffset + (prepIndex * 10), SeekOrigin.Begin);
 
                     // DIOpenDiagService (reads 4, 4, 2 then calls DiagServiceReadPresentation) to build a presentation
@@ -239,7 +242,7 @@ namespace Caesar
                     int prepEntryBitPos = reader.ReadInt32(); // file: 4 (DW)
                     ushort prepEntryMode = reader.ReadUInt16(); // file: 8 (W)
 
-                    DiagPreparation preparation = new DiagPreparation(reader, language, presentationTableOffset + prepEntryOffset, prepEntryBitPos, prepEntryMode, parentEcu, this);
+                    DiagPreparation preparation = new DiagPreparation(reader, language, presentationTableOffset + prepEntryOffset, prepEntryBitPos, prepEntryMode, ParentECU, this);
                     //preparation.PrintDebug();
                     InputPreparations.Add(preparation);
                 }
@@ -248,7 +251,7 @@ namespace Caesar
             OutputPreparations = new List<List<DiagPreparation>>();
             if (W_OutPres_Offset != null && W_OutPres_Count != null)
             {
-                long outPresBaseAddress = BaseAddress + (long)W_OutPres_Offset;
+                long outPresBaseAddress = Address + (long)W_OutPres_Offset;
 
                 // FIXME: run it through the entire dbr cbf directory, check if any file actually has more than 1 item in ResultPresentationSet
                 for (int presIndex = 0; presIndex < W_OutPres_Count; presIndex++)
@@ -269,7 +272,7 @@ namespace Caesar
                         int prepEntryBitPos = reader.ReadInt32(); // file: 4 (DW)
                         ushort prepEntryMode = reader.ReadUInt16(); // file: 8 (W)
 
-                        DiagPreparation preparation = new DiagPreparation(reader, language, presentationTableOffset + prepEntryOffset, prepEntryBitPos, prepEntryMode, parentEcu, this);
+                        DiagPreparation preparation = new DiagPreparation(reader, language, presentationTableOffset + prepEntryOffset, prepEntryBitPos, prepEntryMode, ParentECU, this);
                         ResultPresentationSet.Add(preparation);
                     }
                     OutputPreparations.Add(ResultPresentationSet);
@@ -278,13 +281,13 @@ namespace Caesar
             DiagComParameters = new List<ComParameter>();
             if (T_ComParam_Offset != null && T_ComParam_Count != null)
             {
-                long comParamTableBaseAddress = BaseAddress + (long)T_ComParam_Offset;
+                long comParamTableBaseAddress = Address + (long)T_ComParam_Offset;
                 for (int cpIndex = 0; cpIndex < T_ComParam_Count; cpIndex++)
                 {
                     reader.BaseStream.Seek(comParamTableBaseAddress + (cpIndex * 4), SeekOrigin.Begin);
                     int resultCpOffset = reader.ReadInt32();
                     long cpEntryBaseAddress = comParamTableBaseAddress + resultCpOffset;
-                    ComParameter cp = new ComParameter(reader, cpEntryBaseAddress, parentEcu.ECUInterfaces, language);
+                    ComParameter cp = new ComParameter(reader, cpEntryBaseAddress, ParentECU.ECUInterfaces, language);
                     DiagComParameters.Add(cp);
                 }
             }
@@ -316,11 +319,11 @@ namespace Caesar
             */
             //Console.WriteLine($"{qualifierName} - O: {RequestBytes_Count}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, T: {T_Count}, U: {U_Count}, V: {V_Count}, W: {W_Count}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodeCount}");
 
-            
-            byte[] dscPool = parentEcu.ParentContainer.CaesarCFFHeader.DSCPool;
+
+            byte[] dscPool = ParentECU.ParentContainer.CaesarCFFHeader.DSCPool;
             if (DiagServiceCodeOffset != null && DiagServiceCodeCount != null)
             {
-                long dscTableBaseAddress = BaseAddress + (long)DiagServiceCodeOffset;
+                long dscTableBaseAddress = Address + (long)DiagServiceCodeOffset;
 
                 using (BinaryReader dscPoolReader = new BinaryReader(new MemoryStream(dscPool)))
                 {
@@ -339,7 +342,7 @@ namespace Caesar
                         if (dscPoolOffset != null)
                         {
                             dscPoolReader.BaseStream.Seek((int)dscPoolOffset * 8, SeekOrigin.Begin);
-                            long dscRecordOffset = dscPoolReader.ReadInt32() + parentEcu.ParentContainer.CaesarCFFHeader.DscBlockOffset;
+                            long dscRecordOffset = dscPoolReader.ReadInt32() + ParentECU.ParentContainer.CaesarCFFHeader.DscBlockOffset;
                             int dscRecordSize = dscPoolReader.ReadInt32();
 
                             reader.BaseStream.Seek(dscRecordOffset, SeekOrigin.Begin);
@@ -358,37 +361,6 @@ namespace Caesar
 
                 }
             }
-
-        }
-
-        public long GetCALInt16Offset(CaesarReader reader) 
-        {
-            reader.BaseStream.Seek(BaseAddress, SeekOrigin.Begin);
-
-            ulong bitflags = reader.ReadUInt32();
-            ulong bitflagExtended = reader.ReadUInt32();
-
-            reader.ReadBitflagStringWithReader(ref bitflags, BaseAddress); // Qualifier
-            reader.ReadBitflagInt32(ref bitflags); // Name
-            reader.ReadBitflagInt32(ref bitflags); // Description
-            reader.ReadBitflagUInt16(ref bitflags); // Type
-            reader.ReadBitflagUInt16(ref bitflags); // IsExecutable 
-            if (reader.CheckAndAdvanceBitflag(ref bitflags))
-            {
-                return reader.BaseStream.Position;
-            }
-            else 
-            {
-                return -1;
-            }
-        }
-
-
-        public void PrintDebug() 
-        {
-            Console.WriteLine($"{Qualifier} - ReqBytes: {RequestBytes_Count}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, ComParams: {T_ComParam_Count}, Preparation: {U_prep_Count}, V: {V_Count}, OutPres: {W_OutPres_Count}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodeCount}, field50: {Field50}");
-            Console.WriteLine($"BaseAddress @ 0x{BaseAddress:X}, NR: {NegativeResponseName}");
-            Console.WriteLine($"V @ 0x{BaseAddress + V_Offset:X}, count: {V_Count}");
         }
     }
 }

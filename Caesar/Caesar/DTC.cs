@@ -33,19 +33,11 @@ namespace Caesar
         public int? XrefCount = -1;
 
         private long BaseAddress;
-        public int PoolIndex;
 
         public DTC() 
         {
             PoolIndex = -1;
             BaseAddress = -1;
-            CRC = -1;
-        }
-
-        public DTC(CTFLanguage language, long baseAddress, int poolIndex, ECU parentEcu)
-        {
-            PoolIndex = poolIndex;
-            BaseAddress = baseAddress;
             CRC = -1;
         }
 
@@ -74,7 +66,7 @@ namespace Caesar
             CRC = reader.ReadInt32();
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language)
+        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
         {
             ulong bitflags = reader.ReadUInt16();
 

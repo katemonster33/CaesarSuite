@@ -24,13 +24,13 @@ namespace Caesar
         public int? UnkD;
         public int? UnkE;
         public int? UnkF;
-        public int? DisplayedUnit_CTF;
+        public CaesarStringReference? DisplayedUnit;
         public int? Unk11;
         public int? Unk12;
         public int? EnumMaxValue;
         public int? Unk14;
         public int? Unk15;
-        public int? Description2_CTF;
+        public CaesarStringReference? Description2;
         public int? Unk17;
         public int? Unk18;
         public int? Unk19;
@@ -55,13 +55,6 @@ namespace Caesar
         private long BaseAddress;
         public int PresentationIndex;
 
-
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string? DisplayedUnitString { get { return Language.GetString(DisplayedUnit_CTF); } }
-        [Newtonsoft.Json.JsonIgnore]
-        public string? DescriptionString2 { get { return Language.GetString(Description2_CTF); } }
-
         [Newtonsoft.Json.JsonIgnore]
         public CTFLanguage Language;
 
@@ -70,13 +63,6 @@ namespace Caesar
         public void Restore(CTFLanguage language) 
         {
             Language = language;
-            if(Scales != null)
-            {
-                foreach (Scale s in Scales)
-                {
-                    s.Restore(language);
-                }
-            }
         }
 
         public DiagPresentation() 
@@ -100,9 +86,9 @@ namespace Caesar
             Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, BaseAddress);
 
             Description = reader.ReadBitflagStringRef(ref bitflags, language);
+
             ScaleTableOffset = reader.ReadBitflagInt32(ref bitflags);
             ScaleCountMaybe = reader.ReadBitflagInt32(ref bitflags);
-
             Unk5 = reader.ReadBitflagInt32(ref bitflags);
             NumberChoices = reader.ReadBitflagInt32(ref bitflags);
             Unk7 = reader.ReadBitflagInt32(ref bitflags);
@@ -116,7 +102,7 @@ namespace Caesar
             UnkD = reader.ReadBitflagInt16(ref bitflags);
             UnkE = reader.ReadBitflagInt16(ref bitflags);
             UnkF = reader.ReadBitflagInt16(ref bitflags);
-            DisplayedUnit_CTF = reader.ReadBitflagInt32(ref bitflags);
+            DisplayedUnit = reader.ReadBitflagStringRef(ref bitflags, language);
 
             Unk11 = reader.ReadBitflagInt32(ref bitflags);
             Unk12 = reader.ReadBitflagInt32(ref bitflags);
@@ -124,7 +110,7 @@ namespace Caesar
             Unk14 = reader.ReadBitflagInt32(ref bitflags);
 
             Unk15 = reader.ReadBitflagInt32(ref bitflags);
-            Description2_CTF = reader.ReadBitflagInt32(ref bitflags);
+            Description2 = reader.ReadBitflagStringRef(ref bitflags, language);
             Unk17 = reader.ReadBitflagInt32(ref bitflags);
             Unk18 = reader.ReadBitflagInt32(ref bitflags);
 
@@ -189,7 +175,7 @@ namespace Caesar
             // hack: sometimes hybrid types (regularly parsed as an scaled value if within bounds) are misinterpreted as pure enums
             // this is a temporary fix for kilometerstand until there's a better way to ascertain its type
             // this also won't work on other similar cases without a unit string e.g. error instance counter (Häufigkeitszähler)
-            if (DisplayedUnitString == "km") 
+            if (DisplayedUnit?.Text == "km") 
             {
                 isEnumType = false;
             }
@@ -207,13 +193,13 @@ namespace Caesar
                 byte selectedByte = inBytes[bytesToSkip];
 
                 int selectedBit = (selectedByte >> bitsToSkip) & 1;
-                if (isEnumType && Scales != null && Scales.Count > selectedBit)
+                if (isEnumType && Scales != null && Scales != null && Scales.Count > selectedBit)
                 {
-                    return $"{descriptionPrefix}{Language.GetString(Scales[selectedBit].EnumDescription)} {DisplayedUnitString}";
+                    return $"{descriptionPrefix}{Scales[selectedBit].EnumDescription?.Text} {DisplayedUnit?.Text}";
                 }
                 else 
                 {
-                    return $"{descriptionPrefix}{selectedBit} {DisplayedUnitString}";
+                    return $"{descriptionPrefix}{selectedBit} {DisplayedUnit?.Text}";
                 }
             }
 
@@ -314,7 +300,7 @@ namespace Caesar
                     {
                         if ((rawIntInterpretation >= scale.EnumLowBound) && (rawIntInterpretation <= scale.EnumUpBound))
                         {
-                            return $"{descriptionPrefix}{Language.GetString(scale.EnumDescription)} {DisplayedUnitString}";
+                            return $"{descriptionPrefix}{scale.EnumDescription?.Text} {DisplayedUnit?.Text}";
                         }
                     }
                 }
@@ -323,10 +309,10 @@ namespace Caesar
                     // original implementation, probably incorrect
                     if (rawIntInterpretation < Scales.Count)
                     {
-                        return $"{descriptionPrefix}{Language.GetString(Scales[rawIntInterpretation].EnumDescription)} {DisplayedUnitString}";
+                        return $"{descriptionPrefix}{Scales[rawIntInterpretation].EnumDescription?.Text} {DisplayedUnit?.Text}";
                     }
                 }
-                return $"{descriptionPrefix}(Enum not found) {DisplayedUnitString}";
+                return $"{descriptionPrefix}(Enum not found) {DisplayedUnit?.Text}";
                 // this bit below for troubleshooting problematic presentations
                 /*
                 if (rawIntInterpretation < Scales.Count)
@@ -344,11 +330,11 @@ namespace Caesar
             {
                 if (isDebugBuild)
                 {
-                    return $"{descriptionPrefix}{parsedValue} {DisplayedUnitString} ({humanReadableType})";
+                    return $"{descriptionPrefix}{parsedValue} {DisplayedUnit?.Text} ({humanReadableType})";
                 }
                 else
                 {
-                    return $"{descriptionPrefix}{parsedValue} {DisplayedUnitString}";
+                    return $"{descriptionPrefix}{parsedValue} {DisplayedUnit?.Text}";
                 }
             }
         }
@@ -482,8 +468,8 @@ namespace Caesar
 
 
             Console.WriteLine($"{nameof(Description)}: {Description?.Text}");
-            Console.WriteLine($"{nameof(DisplayedUnitString)}: {DisplayedUnitString}");
-            Console.WriteLine($"{nameof(DescriptionString2)}: {DescriptionString2}");
+            Console.WriteLine($"{nameof(DisplayedUnit)}: {DisplayedUnit?.Text}");
+            Console.WriteLine($"{nameof(Description2)}: {Description2?.Text}");
             Console.WriteLine($"Type: {GetDataType()}");
             Console.WriteLine($"{nameof(Type_1C)}: {Type_1C}");
             Console.WriteLine($"{nameof(TypeLength_1A)}: {TypeLength_1A}");
@@ -540,9 +526,9 @@ namespace Caesar
             sb.Append($" Type: {GetDataType()}");
             sb.Append($" {nameof(ScaleTableOffset)}: {ScaleTableOffset}");
             sb.Append($" {nameof(Qualifier)}: {Qualifier}"); sb.Append($" {nameof(ScaleCountMaybe)}: {ScaleCountMaybe}");
-            if (ScaleCountMaybe > 0)
+            if (ScaleCountMaybe > 0 && Scales != null)
             {
-                sb.Append($" {Language.GetString(Scales[0].EnumDescription)}");
+                sb.Append($" {Scales[0].EnumDescription?.Text}");
             }
             return sb.ToString();
         }

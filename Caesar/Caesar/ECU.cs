@@ -39,12 +39,9 @@ namespace Caesar
         private int? DiagJob_EntrySize;
         private int? DiagJob_BlockSize;
 
-        CaesarTable<DTC> globalDTCs;
+        public CaesarTable<DTC> GlobalDTCs;
 
-        private int? Env_BlockOffset; // 4
-        private int? Env_EntryCount;
-        private int? Env_EntrySize;
-        private int? Env_BlockSize;
+        public CaesarTable<DiagService> GlobalEnvironmentContexts;
 
         private int? VcDomain_BlockOffset; // 5 , 0x15716
         private int? VcDomain_EntryCount; // [1], 43 0x2B
@@ -73,7 +70,6 @@ namespace Caesar
         public List<ECUVariant> ECUVariants = new List<ECUVariant>();
 
         public List<VCDomain> GlobalVCDs = new List<VCDomain>();
-        public List<DiagService> GlobalEnvironmentContexts = new List<DiagService>();
         public List<DiagService> GlobalDiagServices = new List<DiagService>();
         public List<DiagPresentation> GlobalPresentations = new List<DiagPresentation>();
         public List<DiagPresentation> GlobalInternalPresentations = new List<DiagPresentation>();
@@ -91,14 +87,11 @@ namespace Caesar
         byte[] cachedEcuInfoPool = new byte[] { };
         byte[] cachedPresentationsPool = new byte[] { };
         byte[] cachedInternalPresentationsPool = new byte[] { };
-        byte[] cachedEnvPool = new byte[] { };
         byte[] cachedUnkPool = new byte[] { };
 
         [Newtonsoft.Json.JsonIgnore]
         public string? ECUDescription { get { return Language.GetString(EcuDescription_CTF); } }
 
-        [JsonIgnore]
-        public CaesarTable<DTC> GlobalDTCs { get => globalDTCs; }
 
         public void Restore(CTFLanguage language, CaesarContainer parentContainer)
         {
@@ -107,14 +100,6 @@ namespace Caesar
             foreach (VCDomain vc in GlobalVCDs)
             {
                 vc.Restore(language, this);
-            }
-            foreach (DiagService ds in GlobalDiagServices)
-            {
-                ds.Restore(language, this);
-            }
-            foreach (DiagService ds in GlobalEnvironmentContexts)
-            {
-                ds.Restore(language, this);
             }
             foreach (DiagPresentation pres in GlobalPresentations)
             {
@@ -189,14 +174,6 @@ namespace Caesar
             }
             return cachedInternalPresentationsPool;
         }
-        public byte[] ReadECUEnvPool(BinaryReader reader)
-        {
-            if (cachedEnvPool.Length == 0 && Env_BlockOffset != null && Env_EntryCount != null && Env_EntrySize != null)
-            {
-                cachedEnvPool = ReadEcuPool(reader, (int)Env_BlockOffset, (int)Env_EntryCount, (int)Env_EntrySize);
-            }
-            return cachedEnvPool;
-        }
         public byte[] ReadECUUnkPool(BinaryReader reader)
         {
             if (cachedUnkPool.Length == 0 && Unk_BlockOffset != null && Unk_EntryCount != null && Unk_EntrySize != null)
@@ -214,7 +191,8 @@ namespace Caesar
 
         public ECU()
         {
-            globalDTCs = new CaesarTable<DTC>();
+            GlobalDTCs = new CaesarTable<DTC>();
+            GlobalEnvironmentContexts = new CaesarTable<DiagService>();
             Language = new CTFLanguage();
             ParentContainer = new CaesarContainer();
         }
@@ -225,9 +203,8 @@ namespace Caesar
             BaseAddress = baseAddress;
             Language = language;
             // Read 32+16 bits
-            ulong ecuBitFlags = reader.ReadUInt32();
-            // after exhausting the 32 bits, load these additional 16 bits
-            ulong ecuBitFlagsExtended = reader.ReadUInt16();
+            ulong ecuBitFlags = (ulong)reader.ReadUInt32();
+            ecuBitFlags |= (ulong)reader.ReadUInt16() << 32;
 
             // Console.WriteLine($"ECU bitflags: {ecuBitFlags:X}");
 
@@ -267,16 +244,9 @@ namespace Caesar
             DiagJob_EntrySize = reader.ReadBitflagInt32(ref ecuBitFlags); // 14
             DiagJob_BlockSize = reader.ReadBitflagInt32(ref ecuBitFlags);
 
-            globalDTCs = reader.ReadBitflagTable<DTC>(ref ecuBitFlags, dataBufferOffsetRelativeToFile, language);
+            GlobalDTCs = reader.ReadBitflagTable<DTC>(ref ecuBitFlags, dataBufferOffsetRelativeToFile, language, this);
 
-            Env_BlockOffset = reader.ReadBitflagInt32(ref ecuBitFlags) + dataBufferOffsetRelativeToFile;
-            Env_EntryCount = reader.ReadBitflagInt32(ref ecuBitFlags);
-            Env_EntrySize = reader.ReadBitflagInt32(ref ecuBitFlags); // 8
-
-            // bitflags will be exhausted at this point, load the extended bitflags
-            ecuBitFlags = ecuBitFlagsExtended;
-
-            Env_BlockSize = reader.ReadBitflagInt32(ref ecuBitFlags);
+            GlobalEnvironmentContexts = reader.ReadBitflagTable<DiagService>(ref ecuBitFlags, dataBufferOffsetRelativeToFile, language, this);
 
             VcDomain_BlockOffset = reader.ReadBitflagInt32(ref ecuBitFlags) + dataBufferOffsetRelativeToFile;
             VcDomain_EntryCount = reader.ReadBitflagInt32(ref ecuBitFlags);
@@ -349,7 +319,6 @@ namespace Caesar
             CreatePresentations(reader, language);
             CreateInternalPresentations(reader, language);
             // requires presentations
-            CreateEnvironments(reader, language);
             CreateDiagServices(reader, language);
             // dtc has xrefs to envs
             CreateVCDomains(reader, language);
@@ -410,46 +379,6 @@ namespace Caesar
             }
         }
 
-        public void CreateEnvironments(CaesarReader reader, CTFLanguage language)
-        {
-            /*
-            byte[] envPool = ReadECUEnvPool(reader);
-            EnvironmentContext[] globalEnvs = new EnvironmentContext[Env_EntryCount];
-            using (BinaryReader poolReader = new BinaryReader(new MemoryStream(envPool)))
-            {
-                for (int envIndex = 0; envIndex < Env_EntryCount; envIndex++)
-                {
-                    int offset = poolReader.ReadInt32();
-                    int size = poolReader.ReadInt32();
-                    long envBaseAddress = offset + Env_BlockOffset;
-
-                    // Console.WriteLine($"0x{envBaseAddress:X}");
-                    EnvironmentContext env = new EnvironmentContext(reader, language, envBaseAddress, envIndex, this);
-                    globalEnvs[envIndex] = env;
-                }
-            }
-            GlobalEnvironmentContexts = new List<EnvironmentContext>(globalEnvs);
-            */
-            if (Env_EntryCount != null && Env_BlockOffset != null)
-            {
-                byte[] envPool = ReadECUEnvPool(reader);
-                DiagService[] globalEnvs = new DiagService[(int)Env_EntryCount];
-                using (CaesarReader poolReader = new CaesarReader(new MemoryStream(envPool)))
-                {
-                    for (int envIndex = 0; envIndex < Env_EntryCount; envIndex++)
-                    {
-                        int offset = poolReader.ReadInt32();
-                        int size = poolReader.ReadInt32();
-                        long envBaseAddress = offset + (long)Env_BlockOffset;
-
-                        // Console.WriteLine($"0x{envBaseAddress:X}");
-                        DiagService env = new DiagService(reader, language, envBaseAddress, envIndex, this);
-                        globalEnvs[envIndex] = env;
-                    }
-                }
-                GlobalEnvironmentContexts = new List<DiagService>(globalEnvs);
-            }
-        }
         //public void CreateUnk(BinaryReader reader, CTFLanguage language)
         //{
         //    byte[] unkPool = ReadECUUnkPool(reader);
@@ -573,14 +502,12 @@ namespace Caesar
                 $"{nameof(DiagJob_EntryCount)}={DiagJob_EntryCount}, " +
                 $"{nameof(DiagJob_EntrySize)}={DiagJob_EntrySize}, " +
                 $"{nameof(DiagJob_BlockSize)}=0x{DiagJob_BlockSize:X}, " +
-                $"{nameof(globalDTCs)}={globalDTCs}, " +
-                $"{nameof(Env_BlockOffset)}=0x{Env_BlockOffset:X}, " +
-                $"{nameof(Env_EntryCount)}={Env_EntryCount}, " +
-                $"{nameof(Env_EntrySize)}={Env_EntrySize}, " +
+                $"{nameof(GlobalDTCs)}={GlobalDTCs}, " +
+                $"{nameof(GlobalEnvironmentContexts)}={GlobalEnvironmentContexts}, " +
 
                 // Console.WriteLine("--- bitflag load 2 ---");
 
-                $"{nameof(Env_BlockSize)}=0x{Env_BlockSize:X}, " +
+                //$"{nameof(Env_BlockSize)}=0x{Env_BlockSize:X}, " +
                 $"{nameof(VcDomain_BlockOffset)}=0x{VcDomain_BlockOffset:X}, " +
                 $"{nameof(VcDomain_EntryCount)}={VcDomain_EntryCount}, " +
                 $"{nameof(VcDomain_EntrySize)}={VcDomain_EntrySize}, " +

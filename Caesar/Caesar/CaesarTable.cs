@@ -15,14 +15,16 @@ namespace Caesar
 
         public int EntryCount { get; set; }
 
-        public int EntrySize { get; set; }
+        public int? EntrySize { get; set; }
 
-        public int BlockSize { get; set; }
+        public int? BlockSize { get; set; }
 
         protected List<T> Objects { get; set; } = new List<T>();
 
-        [JsonIgnore]
-        public T this[int index] => Objects[index];
+        public List<T> GetObjects()
+        {
+            return new List<T>(Objects);
+        }
 
         [JsonIgnore]
         public int Count => Objects.Count;
@@ -50,7 +52,7 @@ namespace Caesar
             return output;
         }
 
-        public void Populate(CaesarReader reader, CTFLanguage language)
+        public void Populate(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
         {
             Objects.Clear();
             long originalOffset = reader.BaseStream.Position;
@@ -59,7 +61,8 @@ namespace Caesar
             for (int index = 0; index < EntryCount; index++, offset += BlockSize)
             {
                 T obj = new T();
-                obj.Read(reader, BlockOffset, language);
+                obj.PoolIndex = index;
+                obj.Read(reader, BlockOffset, language, currentEcu);
                 Objects.Add(obj);
             }
             reader.BaseStream.Seek(originalOffset, System.IO.SeekOrigin.Begin);
@@ -73,7 +76,7 @@ namespace Caesar
             BlockSize = 0;
         }
 
-        public CaesarTable(int blockOffset, int entryCount, int entrySize, int blockSize)
+        public CaesarTable(int blockOffset, int entryCount, int? entrySize, int? blockSize)
         {
             BlockOffset = blockOffset;
             EntryCount = entryCount;

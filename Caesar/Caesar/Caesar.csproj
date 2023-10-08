@@ -7,6 +7,7 @@
     <ApplicationIcon>caesar_256.ico</ApplicationIcon>
     <Version>1.5.2</Version>
     <Nullable>enable</Nullable>
+	<Copyright>Copyright ©  2020</Copyright>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

@@ -139,20 +139,25 @@ namespace Caesar
             return null;
         }
 
-        public CaesarTable<C> ReadBitflagTable<C>(ref ulong bitFlags, int baseOffset, CTFLanguage language) where C : CaesarObject, new()
+        public CaesarTable<C> ReadBitflagTable<C>(ref ulong bitFlags, int baseOffset, CTFLanguage language, bool fixedSize, ECU? currentEcu = null) where C : CaesarObject, new()
         {
             int? blockOffset = ReadBitflagInt32(ref bitFlags) + baseOffset;
             int? entryCount = ReadBitflagInt32(ref bitFlags);
-            int? entrySize = ReadBitflagInt32(ref bitFlags);
-            int? blockSize = ReadBitflagInt32(ref bitFlags);
-            if (blockOffset != null && entryCount != null && entrySize != null)
+            int? entrySize = null; 
+            int? blockSize = null;
+            if(fixedSize)
+            {
+                entrySize = ReadBitflagInt32(ref bitFlags);
+                blockSize = ReadBitflagInt32(ref bitFlags);
+            }
+            if (blockOffset != null && entryCount != null)
             {
                 if (blockSize == null)
                 {
                     blockSize = entrySize;
                 }
-                var output = new CaesarTable<C>((int)blockOffset, (int)entryCount, (int)entrySize, (int)blockSize);
-                output.Populate(this, language);
+                var output = new CaesarTable<C>((int)blockOffset, (int)entryCount, entrySize, blockSize);
+                output.Populate(this, language, currentEcu);
                 return output;
             }
             else

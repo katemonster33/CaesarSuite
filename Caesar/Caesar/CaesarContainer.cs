@@ -56,9 +56,9 @@ namespace Caesar
             }
 
             sw.Stop();
-#if DEBUG
+//#if DEBUG
             Console.WriteLine($"Loaded {CaesarECUs[0].Qualifier} in {sw.ElapsedMilliseconds}ms");
-#endif
+//#endif
         }
 
         public static string SerializeContainer(CaesarContainer container) 

@@ -23,17 +23,19 @@ namespace Caesar
         static void RunLibraryTest() 
         {
             // debug: step through files to observe potential faults, missing bitflags etc.
-            List<string> paths = new List<string>();
-            string basePath = Environment.CurrentDirectory;
-            LoadFilePaths(basePath + @"\Data\cbf\", paths);
-            //LoadFilePaths(basePath + @"CBF VAN\", paths);
-            foreach (string file in paths)
-            {
-                Console.WriteLine(file);
-                CaesarContainer container = new CaesarContainer(File.ReadAllBytes(file));
-                File.WriteAllText(file.Replace(".cbf", ".json"), CaesarContainer.SerializeContainer(container));
-                //Console.ReadKey();
-            }
+            //List<string> paths = new List<string>();
+            //string basePath = Environment.CurrentDirectory;
+            //LoadFilePaths(basePath + @"\Data\cbf\", paths);
+            ////LoadFilePaths(basePath + @"CBF VAN\", paths);
+            //foreach (string file in paths)
+            //{
+            //    Console.WriteLine(file);
+            //    CaesarContainer container = new CaesarContainer(File.ReadAllBytes(file));
+            //    File.WriteAllText(file.Replace(".cbf", ".json"), CaesarContainer.SerializeContainer(container));
+            //    //Console.ReadKey();
+            //}
+            CaesarContainer container = new CaesarContainer(File.ReadAllBytes(Path.Combine(Environment.CurrentDirectory, @"Data\cbf\ACM301T.31.00.209.cbf")));
+            File.WriteAllText("ACM301T.json", CaesarContainer.SerializeContainer(container));
         }
 
         static void LoadFilePaths(string path, List<string> result)

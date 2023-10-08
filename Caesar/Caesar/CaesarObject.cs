@@ -15,6 +15,8 @@ namespace Caesar
 
         public int DataSize { get; set; }
 
+        public int PoolIndex { get; set; } = -1;
+
         protected virtual void ReadHeader(CaesarReader reader, int baseOffset)
         {
             if(HeaderSize == 0)
@@ -25,7 +27,7 @@ namespace Caesar
             DataSize = reader.ReadInt32();
         }
 
-        public void Read(CaesarReader reader, int baseOffset, CTFLanguage language)
+        public void Read(CaesarReader reader, int baseOffset, CTFLanguage language, ECU? currentEcu)
         {
             long nextHeaderOffset = reader.BaseStream.Position;
             ReadHeader(reader, baseOffset);
@@ -33,11 +35,11 @@ namespace Caesar
             if(Address != 0 && DataSize > 0)
             {
                 reader.BaseStream.Seek(Address, SeekOrigin.Begin);
-                ReadData(reader, language);
+                ReadData(reader, language, currentEcu);
                 reader.BaseStream.Seek(nextHeaderOffset, SeekOrigin.Begin);
             }
         }
 
-        protected abstract void ReadData(CaesarReader reader, CTFLanguage language);
+        protected abstract void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu);
     }
 }

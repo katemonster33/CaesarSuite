@@ -378,12 +378,12 @@ namespace Caesar
         {
             int dtcPoolSize = DTCsPoolOffsetsWithBounds.Count;
             DTCs = new DTC[dtcPoolSize];
-
+            List<DTC> globalDtcsCopy = parentEcu.GlobalDTCs.GetObjects();
             for (int i = 0; i < dtcPoolSize; i++) 
             {
                 if (i == DTCsPoolOffsetsWithBounds[i].Item1) 
                 {
-                    DTCs[i] = parentEcu.GlobalDTCs[i];
+                    DTCs[i] = globalDtcsCopy[i];
                     DTCs[i].XrefStart = DTCsPoolOffsetsWithBounds[i].Item2;
                     DTCs[i].XrefCount = DTCsPoolOffsetsWithBounds[i].Item3;
                 }
@@ -399,9 +399,9 @@ namespace Caesar
                 }
                 for (int globalIndex = lowestIndex; globalIndex < loopMax; globalIndex++)
                 {
-                    if (ParentECU.GlobalDTCs[globalIndex].PoolIndex == DTCsPoolOffsetsWithBounds[i].Item1) 
+                    if (globalDtcsCopy[globalIndex].PoolIndex == DTCsPoolOffsetsWithBounds[i].Item1) 
                     {
-                        DTCs[i] = parentEcu.GlobalDTCs[globalIndex];
+                        DTCs[i] = globalDtcsCopy[globalIndex];
                         DTCs[i].XrefStart = DTCsPoolOffsetsWithBounds[i].Item2;
                         DTCs[i].XrefCount = DTCsPoolOffsetsWithBounds[i].Item3;
                         lowestIndex = globalIndex;
@@ -443,12 +443,12 @@ namespace Caesar
         {
             int envPoolSize = EnvironmentContextsPoolOffsets.Count;
             EnvironmentContexts = new DiagService[envPoolSize];
-
+            List<DiagService> globalEnvCache = parentEcu.GlobalEnvironmentContexts.GetObjects();
             for (int i = 0; i < envPoolSize; i++)
             {
                 if (i == EnvironmentContextsPoolOffsets[i])
                 {
-                    EnvironmentContexts[i] = parentEcu.GlobalEnvironmentContexts[i];
+                    EnvironmentContexts[i] = globalEnvCache[i];
                 }
             }
             EnvironmentContextsPoolOffsets.Sort();
@@ -462,9 +462,9 @@ namespace Caesar
                 }
                 for (int globalIndex = lowestIndex; globalIndex < loopMax; globalIndex++)
                 {
-                    if (parentEcu.GlobalEnvironmentContexts[globalIndex].PoolIndex == EnvironmentContextsPoolOffsets[i])
+                    if (globalEnvCache[globalIndex].PoolIndex == EnvironmentContextsPoolOffsets[i])
                     {
-                        EnvironmentContexts[i] = parentEcu.GlobalEnvironmentContexts[globalIndex];
+                        EnvironmentContexts[i] = globalEnvCache[globalIndex];
                         lowestIndex = globalIndex;
                         break;
                     }
