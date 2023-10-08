@@ -15,7 +15,7 @@ namespace Caesar
         static void Main(string[] args)
         {
             Console.WriteLine("Caesar (running as console application)");
-            // RunLibraryTest();
+            RunLibraryTest();
             Console.WriteLine("Done, press any key to exit");
             Console.ReadKey();
         }
@@ -24,13 +24,14 @@ namespace Caesar
         {
             // debug: step through files to observe potential faults, missing bitflags etc.
             List<string> paths = new List<string>();
-            string basePath = @"";
-            LoadFilePaths(basePath + @"Data05.00.00\", paths);
-            LoadFilePaths(basePath + @"CBF VAN\", paths);
+            string basePath = Environment.CurrentDirectory;
+            LoadFilePaths(basePath + @"\Data\cbf\", paths);
+            //LoadFilePaths(basePath + @"CBF VAN\", paths);
             foreach (string file in paths)
             {
                 Console.WriteLine(file);
                 CaesarContainer container = new CaesarContainer(File.ReadAllBytes(file));
+                File.WriteAllText(file.Replace(".cbf", ".json"), CaesarContainer.SerializeContainer(container));
                 //Console.ReadKey();
             }
         }
