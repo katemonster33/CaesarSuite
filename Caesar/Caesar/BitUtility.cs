@@ -49,9 +49,16 @@ namespace Caesar
         /// <param name="inBytes">Input byte array</param>
         /// <param name="spacedOut">Option to add spaces between individual bytes</param>
         /// <returns>Hex-string based on the input byte array</returns>
-        public static string BytesToHex(byte[] inBytes, bool spacedOut = false)
+        public static string BytesToHex(byte[]? inBytes, bool spacedOut = false)
         {
-            return BitConverter.ToString(inBytes).Replace("-", spacedOut ? " " : "");
+            if (inBytes == null)
+            {
+                return "null";
+            }
+            else
+            {
+                return BitConverter.ToString(inBytes).Replace("-", spacedOut ? " " : "");
+            }
         }
 
         /// <summary>

@@ -9,45 +9,53 @@ namespace Caesar
 {
     public class CTFHeader
     {
-        public int CtfUnk1;
-        public string Qualifier;
-        public int CtfUnk3;
-        public int CtfUnk4;
-        private int CtfLanguageCount;
-        private int CtfLanguageTableOffset;
-        public string CtfUnkString;
+        public int? CtfUnk1;
+        public string? Qualifier;
+        public int? CtfUnk3;
+        public int? CtfUnk4;
+        private int? CtfLanguageCount;
+        private int? CtfLanguageTableOffset;
+        public string? CtfUnkString;
 
         public List<CTFLanguage> CtfLanguages;
 
         public long BaseAddress;
 
-        public CTFHeader() { }
-        public CTFHeader(BinaryReader reader, long baseAddress, int headerSize) 
+        public CTFHeader() 
+        {
+            BaseAddress = -1;
+            CtfLanguages = new List<CTFLanguage>();
+        }
+
+        public CTFHeader(CaesarReader reader, long baseAddress, int headerSize) 
         {
             BaseAddress = baseAddress;
             reader.BaseStream.Seek(BaseAddress, SeekOrigin.Begin);
             ulong ctfBitflags = reader.ReadUInt16();
 
-            CtfUnk1 = CaesarReader.ReadBitflagInt32(ref ctfBitflags, reader);
-            Qualifier = CaesarReader.ReadBitflagStringWithReader(ref ctfBitflags, reader, BaseAddress);
-            CtfUnk3 = CaesarReader.ReadBitflagInt16(ref ctfBitflags, reader);
-            CtfUnk4 = CaesarReader.ReadBitflagInt32(ref ctfBitflags, reader);
-            CtfLanguageCount = CaesarReader.ReadBitflagInt32(ref ctfBitflags, reader);
-            CtfLanguageTableOffset = CaesarReader.ReadBitflagInt32(ref ctfBitflags, reader);
-            CtfUnkString = CaesarReader.ReadBitflagStringWithReader(ref ctfBitflags, reader, BaseAddress);
-
-            long ctfLanguageTableOffsetRelativeToDefintions = CtfLanguageTableOffset + BaseAddress;
+            CtfUnk1 = reader.ReadBitflagInt32(ref ctfBitflags);
+            Qualifier = reader.ReadBitflagStringWithReader(ref ctfBitflags, BaseAddress);
+            CtfUnk3 = reader.ReadBitflagInt16(ref ctfBitflags);
+            CtfUnk4 = reader.ReadBitflagInt32(ref ctfBitflags);
+            CtfLanguageCount = reader.ReadBitflagInt32(ref ctfBitflags);
+            CtfLanguageTableOffset = reader.ReadBitflagInt32(ref ctfBitflags);
+            CtfUnkString = reader.ReadBitflagStringWithReader(ref ctfBitflags, BaseAddress);
 
             // parse every language record
             CtfLanguages = new List<CTFLanguage>();
-            for (int languageEntry = 0; languageEntry < CtfLanguageCount; languageEntry++)
+            if (CtfLanguageTableOffset != null)
             {
-                long languageTableEntryOffset = ctfLanguageTableOffsetRelativeToDefintions + (languageEntry * 4);
+                long ctfLanguageTableOffsetRelativeToDefintions = (long)CtfLanguageTableOffset + BaseAddress;
 
-                reader.BaseStream.Seek(languageTableEntryOffset, SeekOrigin.Begin);
-                long realLanguageEntryAddress = reader.ReadInt32() + ctfLanguageTableOffsetRelativeToDefintions;
-                CTFLanguage language = new CTFLanguage(reader, realLanguageEntryAddress, headerSize);
-                CtfLanguages.Add(language);
+                for (int languageEntry = 0; languageEntry < CtfLanguageCount; languageEntry++)
+                {
+                    long languageTableEntryOffset = ctfLanguageTableOffsetRelativeToDefintions + (languageEntry * 4);
+
+                    reader.BaseStream.Seek(languageTableEntryOffset, SeekOrigin.Begin);
+                    long realLanguageEntryAddress = reader.ReadInt32() + ctfLanguageTableOffsetRelativeToDefintions;
+                    CTFLanguage language = new CTFLanguage(reader, realLanguageEntryAddress, headerSize);
+                    CtfLanguages.Add(language);
+                }
             }
         }
         public void PrintDebug() 

@@ -9,46 +9,46 @@ namespace Caesar
 {
     public class FlashSecurity
     {
-        public int MethodValueType;
-        public int MethodSize;
-        public byte[] MethodValue;
+        public short? MethodValueType;
+        public int? MethodSize;
+        public byte[]? MethodValue;
 
-        public int SignatureValueType;
-        public int SignatureSize;
-        public byte[] SignatureValue;
+        public short? SignatureValueType;
+        public int? SignatureSize;
+        public byte[]? SignatureValue;
 
-        public int ChecksumValueType;
-        public int ChecksumSize;
-        public byte[] ChecksumValue;
+        public short? ChecksumValueType;
+        public int? ChecksumSize;
+        public byte[]? ChecksumValue;
 
-        public int EcuKeyValueType;
-        public int EcuKeySize;
-        public byte[] EcuKeyValue;
+        public short? EcuKeyValueType;
+        public int? EcuKeySize;
+        public byte[]? EcuKeyValue;
 
         public long BaseAddress;
 
-        public FlashSecurity(BinaryReader reader, long baseAddress)
+        public FlashSecurity(CaesarReader reader, long baseAddress)
         {
             BaseAddress = baseAddress;
             reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
 
             ulong bitFlags = reader.ReadUInt16();
 
-            MethodValueType = CaesarReader.ReadBitflagInt16(ref bitFlags, reader);
-            MethodSize = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            MethodValue = CaesarReader.ReadBitflagDumpWithReader(ref bitFlags, reader, MethodSize, baseAddress);
+            MethodValueType = reader.ReadBitflagInt16(ref bitFlags);
+            MethodSize = reader.ReadBitflagInt32(ref bitFlags);
+            MethodValue = reader.ReadBitflagDumpWithReader(ref bitFlags, MethodSize, baseAddress);
 
-            SignatureValueType = CaesarReader.ReadBitflagInt16(ref bitFlags, reader);
-            SignatureSize = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            SignatureValue = CaesarReader.ReadBitflagDumpWithReader(ref bitFlags, reader, SignatureSize, baseAddress);
+            SignatureValueType = reader.ReadBitflagInt16(ref bitFlags);
+            SignatureSize = reader.ReadBitflagInt32(ref bitFlags);
+            SignatureValue = reader.ReadBitflagDumpWithReader(ref bitFlags, SignatureSize, baseAddress);
 
-            ChecksumValueType = CaesarReader.ReadBitflagInt16(ref bitFlags, reader);
-            ChecksumSize = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            ChecksumValue = CaesarReader.ReadBitflagDumpWithReader(ref bitFlags, reader, ChecksumSize, baseAddress);
+            ChecksumValueType = reader.ReadBitflagInt16(ref bitFlags);
+            ChecksumSize = reader.ReadBitflagInt32(ref bitFlags);
+            ChecksumValue = reader.ReadBitflagDumpWithReader(ref bitFlags, ChecksumSize, baseAddress);
 
-            EcuKeyValueType = CaesarReader.ReadBitflagInt16(ref bitFlags, reader);
-            EcuKeySize = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            EcuKeyValue = CaesarReader.ReadBitflagDumpWithReader(ref bitFlags, reader, EcuKeySize, baseAddress);
+            EcuKeyValueType = reader.ReadBitflagInt16(ref bitFlags);
+            EcuKeySize = reader.ReadBitflagInt32(ref bitFlags);
+            EcuKeyValue = reader.ReadBitflagDumpWithReader(ref bitFlags, EcuKeySize, baseAddress);
         }
 
         public void PrintDebug()

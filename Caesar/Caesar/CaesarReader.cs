@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -7,60 +8,74 @@ using System.Threading.Tasks;
 
 namespace Caesar
 {
-    public class CaesarReader
+    public class CaesarReader : BinaryReader
     {
-        public static Encoding DefaultEncoding = Encoding.UTF8;
+        public Encoding DefaultEncoding = Encoding.UTF8;
+
+        public CaesarReader(Stream input) : base(input, Encoding.UTF8, false)
+        {
+        }
+
+        public CaesarReader(Stream input, Encoding encoding) : base(input, encoding, false)
+        {
+            DefaultEncoding = encoding;
+        }
+
+        public CaesarReader(Stream input, Encoding encoding, bool leaveOpen) : base(input, encoding, leaveOpen)
+        {
+            DefaultEncoding = encoding;
+        }
 
         // slightly more complex because it jumps to the string position for reading
-        public static string ReadBitflagStringWithReader(ref ulong bitFlags, BinaryReader reader, long virtualBase = 0)
+        public string? ReadBitflagStringWithReader(ref ulong bitFlags, long virtualBase = 0)
         {
             if (CheckAndAdvanceBitflag(ref bitFlags))
             {
                 // read the string's offset relative to our current block
-                int stringOffset = reader.ReadInt32();
+                int stringOffset = ReadInt32();
                 // save our reading cursor
-                long readerPosition = reader.BaseStream.Position;
+                long readerPosition = BaseStream.Position;
                 // seek to the specified offset, then read out the string
-                reader.BaseStream.Seek(stringOffset + virtualBase, SeekOrigin.Begin);
-                string result = ReadStringFromBinaryReader(reader);
+                BaseStream.Seek(stringOffset + virtualBase, SeekOrigin.Begin);
+                string result = ReadString();
                 // restore our reading cursor
-                reader.BaseStream.Seek(readerPosition, SeekOrigin.Begin);
+                BaseStream.Seek(readerPosition, SeekOrigin.Begin);
                 return result;
             }
             else
             {
                 // Console.WriteLine("Bitflag was off for string");
-                return "(flag disabled)";
+                return null;
             }
         }
-        public static byte[] ReadBitflagDumpWithReader(ref ulong bitFlags, BinaryReader reader, int dumpSize, long virtualBase = 0)
+        public byte[]? ReadBitflagDumpWithReader(ref ulong bitFlags, int? dumpSize, long virtualBase = 0)
         {
-            if (CheckAndAdvanceBitflag(ref bitFlags))
+            if (CheckAndAdvanceBitflag(ref bitFlags) && dumpSize != null)
             {
                 // read the dump's offset relative to our current block
-                int dumpOffset = reader.ReadInt32();
+                int dumpOffset = ReadInt32();
                 // save our reading cursor
-                long readerPosition = reader.BaseStream.Position;
+                long readerPosition = BaseStream.Position;
                 // seek to the specified offset, then read out the dump
-                reader.BaseStream.Seek(dumpOffset + virtualBase, SeekOrigin.Begin);
-                byte[] result = reader.ReadBytes(dumpSize);
+                BaseStream.Seek(dumpOffset + virtualBase, SeekOrigin.Begin);
+                byte[] result = ReadBytes((int)dumpSize);
                 // restore our reading cursor
-                reader.BaseStream.Seek(readerPosition, SeekOrigin.Begin);
+                BaseStream.Seek(readerPosition, SeekOrigin.Begin);
                 return result;
             }
             else
             {
-                return new byte[] { };
+                return null;
             }
         }
 
-        public static string ReadBitflagDumpWithReaderAsString(ref ulong bitFlags, BinaryReader reader, int dumpSize, long virtualBase = 0)
+        public string? ReadBitflagDumpWithReaderAsString(ref ulong bitFlags, int dumpSize, long virtualBase = 0)
         {
-            byte[] stringBytes = ReadBitflagDumpWithReader(ref bitFlags, reader, dumpSize, virtualBase);
-            return DefaultEncoding.GetString(stringBytes); // lazy: no encoding is specified
+            byte[]? stringBytes = ReadBitflagDumpWithReader(ref bitFlags, dumpSize, virtualBase);
+            return stringBytes != null ? DefaultEncoding.GetString(stringBytes) : null; // lazy: no encoding is specified
         }
 
-        public static string ReadStringFromBinaryReader(BinaryReader reader, Encoding encoding = null)
+        public string ReadString(Encoding? encoding = null)
         {
             if (encoding is null) 
             {
@@ -68,8 +83,8 @@ namespace Caesar
             }
 
             // slightly better performance than the original below at the expense of compiling with unsafe
-            long stringStartPosition = reader.BaseStream.Position;
-            byte[] underlyingBuffer = ((MemoryStream)reader.BaseStream).GetBuffer();
+            long stringStartPosition = BaseStream.Position;
+            byte[] underlyingBuffer = ((MemoryStream)BaseStream).GetBuffer();
             long cursor = stringStartPosition;
             while (underlyingBuffer[cursor++] != 0) 
             {
@@ -101,111 +116,144 @@ namespace Caesar
             */
         }
 
-        public static bool CheckAndAdvanceBitflag(ref ulong bitFlag)
+        public bool CheckAndAdvanceBitflag(ref ulong bitFlag)
         {
             bool flagIsSet = (bitFlag & 1) > 0;
             bitFlag >>= 1;
             return flagIsSet;
         }
 
-        public static byte[] ReadBitflagRawBytes(ref ulong bitFlags, BinaryReader reader, int bytes) {
+        public byte[]? ReadBitflagRawBytes(ref ulong bitFlags, int bytes) {
             if (CheckAndAdvanceBitflag(ref bitFlags)) {
-                return reader.ReadBytes(bytes);
+                return ReadBytes(bytes);
             }
-            return new byte[] { };
+            return null;
         }
-        public static float ReadBitflagFloat(ref ulong bitFlags, BinaryReader reader, float defaultResult = 0)
+        public float? ReadBitflagFloat(ref ulong bitFlags)
         {
             if (CheckAndAdvanceBitflag(ref bitFlags))
             {
-                byte[] floatBytes = reader.ReadBytes(4);
+                byte[] floatBytes = ReadBytes(4);
                 return BitConverter.ToSingle(floatBytes, 0);
             }
-            return defaultResult;
-        }
-        public static int ReadBitflagInt32(ref ulong bitFlags, BinaryReader reader, int defaultResult = 0)
-        {
-            if (CheckAndAdvanceBitflag(ref bitFlags))
-            {
-                return reader.ReadInt32();
-            }
-            return defaultResult;
-        }
-        public static uint ReadBitflagUInt32(ref ulong bitFlags, BinaryReader reader, uint defaultResult = 0)
-        {
-            if (CheckAndAdvanceBitflag(ref bitFlags))
-            {
-                return reader.ReadUInt32();
-            }
-            return defaultResult;
-        }
-        public static short ReadBitflagInt16(ref ulong bitFlags, BinaryReader reader, short defaultResult = 0)
-        {
-            if (CheckAndAdvanceBitflag(ref bitFlags))
-            {
-                return reader.ReadInt16();
-            }
-            return defaultResult;
-        }
-        public static ushort ReadBitflagUInt16(ref ulong bitFlags, BinaryReader reader, ushort defaultResult = 0)
-        {
-            if (CheckAndAdvanceBitflag(ref bitFlags))
-            {
-                return reader.ReadUInt16();
-            }
-            return defaultResult;
-        }
-        public static int ReadBitflagInt8(ref ulong bitFlags, BinaryReader reader, int defaultResult = 0)
-        {
-            if (CheckAndAdvanceBitflag(ref bitFlags))
-            {
-                return reader.ReadChar();
-            }
-            return defaultResult;
-        }
-        public static byte ReadBitflagUInt8(ref ulong bitFlags, BinaryReader reader, byte defaultResult = 0)
-        {
-            if (CheckAndAdvanceBitflag(ref bitFlags))
-            {
-                return reader.ReadByte();
-            }
-            return defaultResult;
+            return null;
         }
 
-        public static int ReadIntWithSize(BinaryReader reader, int size, long offset)
+        public CaesarTable<C> ReadBitflagTable<C>(ref ulong bitFlags, int baseOffset, CTFLanguage language) where C : CaesarObject, new()
         {
-            reader.BaseStream.Seek(offset, SeekOrigin.Begin);
+            int? blockOffset = ReadBitflagInt32(ref bitFlags) + baseOffset;
+            int? entryCount = ReadBitflagInt32(ref bitFlags);
+            int? entrySize = ReadBitflagInt32(ref bitFlags);
+            int? blockSize = ReadBitflagInt32(ref bitFlags);
+            if (blockOffset != null && entryCount != null && entrySize != null)
+            {
+                if (blockSize == null)
+                {
+                    blockSize = entrySize;
+                }
+                var output = new CaesarTable<C>((int)blockOffset, (int)entryCount, (int)entrySize, (int)blockSize);
+                output.Populate(this, language);
+                return output;
+            }
+            else
+            {
+                return null;
+            }
+
+        }
+
+        public CaesarStringReference? ReadBitflagStringRef(ref ulong bitFlags, CTFLanguage language)
+        {
+            if (CheckAndAdvanceBitflag(ref bitFlags))
+            {
+                int id = ReadInt32();
+                return new CaesarStringReference(language, id);
+            }
+            return null;
+        }
+        public int? ReadBitflagInt32(ref ulong bitFlags)
+        {
+            if (CheckAndAdvanceBitflag(ref bitFlags))
+            {
+                return ReadInt32();
+            }
+            return null;
+        }
+        public uint? ReadBitflagUInt32(ref ulong bitFlags)
+        {
+            if (CheckAndAdvanceBitflag(ref bitFlags))
+            {
+                return ReadUInt32();
+            }
+            return null;
+        }
+        public short? ReadBitflagInt16(ref ulong bitFlags)
+        {
+            if (CheckAndAdvanceBitflag(ref bitFlags))
+            {
+                return ReadInt16();
+            }
+            return null;
+        }
+        public ushort? ReadBitflagUInt16(ref ulong bitFlags)
+        {
+            if (CheckAndAdvanceBitflag(ref bitFlags))
+            {
+                return ReadUInt16();
+            }
+            return null;
+        }
+        public char? ReadBitflagInt8(ref ulong bitFlags)
+        {
+            if (CheckAndAdvanceBitflag(ref bitFlags))
+            {
+                return ReadChar();
+            }
+            return null;
+        }
+        public byte? ReadBitflagUInt8(ref ulong bitFlags)
+        {
+            if (CheckAndAdvanceBitflag(ref bitFlags))
+            {
+                return ReadByte();
+            }
+            return null;
+        }
+
+        public int ReadIntWithSize(int size, long offset)
+        {
+            BaseStream.Seek(offset, SeekOrigin.Begin);
             if (size == 1)
             {
-                return reader.ReadChar();
+                return ReadChar();
             }
             else if (size == 2)
             {
-                return reader.ReadInt16();
+                return ReadInt16();
             }
             else if (size == 4)
             {
-                return reader.ReadInt32();
+                return ReadInt32();
             }
             else
             {
                 throw new NotImplementedException($"Requested an unknown integer size to read: {size}");
             }
         }
-        public static uint ReadUIntWithSize(BinaryReader reader, int size, long offset)
+        public uint ReadUIntWithSize(int size, long offset)
         {
-            reader.BaseStream.Seek(offset, SeekOrigin.Begin);
+            BaseStream.Seek(offset, SeekOrigin.Begin);
             if (size == 1)
             {
-                return reader.ReadByte();
+                return ReadByte();
             }
             else if (size == 2)
             {
-                return reader.ReadUInt16();
+                return ReadUInt16();
             }
             else if (size == 4)
             {
-                return reader.ReadUInt32();
+                return ReadUInt32();
             }
             else
             {
@@ -279,13 +327,13 @@ namespace Caesar
             {
                 byte[] blockToRead = fileBytes.Skip(fileCursor).Take(blockSize).ToArray();
                 fileCursor += blockSize;
-                currentChecksum = CaesarReader.CrcAccumulate(blockToRead, currentChecksum);
+                currentChecksum = CrcAccumulate(blockToRead, currentChecksum);
             }
             return currentChecksum;
         }
         public static uint ComputeFileChecksumLazy(byte[] fileBytes)
         {
-            return CaesarReader.CrcAccumulate(fileBytes, 0xFFFFFFFF, fileBytes.Length - 4);
+            return CrcAccumulate(fileBytes, 0xFFFFFFFF, fileBytes.Length - 4);
         }
     }
 }

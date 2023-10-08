@@ -157,19 +157,19 @@ namespace Caesar
         public static int ReadCBFWithOffset(int memberIndex, StructureName structureName, byte[] input)
         {
             int byteOffset = CaesarStructure.GetCBFOffset(memberIndex, structureName, input);
-            using (BinaryReader reader = new BinaryReader(new MemoryStream(input)))
+            using (CaesarReader reader = new CaesarReader(new MemoryStream(input)))
             {
                 byte[] layout = CaesarStructure.GetCaesarLayout(structureName);
-                return CaesarReader.ReadIntWithSize(reader, layout[memberIndex], byteOffset);
+                return reader.ReadIntWithSize(layout[memberIndex], byteOffset);
             }
         }
         public static uint ReadCBFWithOffsetUnsigned(int memberIndex, StructureName structureName, byte[] input)
         {
             int byteOffset = CaesarStructure.GetCBFOffset(memberIndex, structureName, input);
-            using (BinaryReader reader = new BinaryReader(new MemoryStream(input)))
+            using (CaesarReader reader = new CaesarReader(new MemoryStream(input)))
             {
                 byte[] layout = CaesarStructure.GetCaesarLayout(structureName);
-                return CaesarReader.ReadUIntWithSize(reader, layout[memberIndex], byteOffset);
+                return reader.ReadUIntWithSize(layout[memberIndex], byteOffset);
             }
         }
 

@@ -44,20 +44,20 @@ namespace Caesar
             CP_P2_EXT_TIMEOUT_7F_21,
         }
 
-        public string Qualifier;
-        public int Name_CTF;
-        public int Description_CTF;
+        public string? Qualifier;
+        public int? Name_CTF;
+        public int? Description_CTF;
 
-        public int Unk3;
-        public int Unk4;
+        public short? Unk3;
+        public short? Unk4;
 
-        public int Unk5;
-        public int Unk6;
-        public int Unk7;
+        public int? Unk5;
+        public int? Unk6;
+        public int? Unk7;
 
-        public int Unk8;
-        public int Unk9;
-        public int Unk10; // might be signed
+        public byte? Unk8;
+        public byte? Unk9;
+        public char? Unk10; // might be signed
 
         private long BaseAddress;
         private int Index;
@@ -74,9 +74,14 @@ namespace Caesar
             }
         }
 
-        public ECUInterfaceSubtype() { }
+        public ECUInterfaceSubtype() 
+        {
+            Index = -1;
+            BaseAddress = -1;
+            Language = new CTFLanguage();
+        }
 
-        public ECUInterfaceSubtype(BinaryReader reader, long baseAddress, int index, CTFLanguage language)
+        public ECUInterfaceSubtype(CaesarReader reader, long baseAddress, int index, CTFLanguage language)
         {
             Index = index;
             BaseAddress = baseAddress;
@@ -85,42 +90,37 @@ namespace Caesar
             // we can now properly operate on the interface block
             ulong ctBitflags = reader.ReadUInt32();
 
-            Qualifier = CaesarReader.ReadBitflagStringWithReader(ref ctBitflags, reader, BaseAddress);
-            Name_CTF = CaesarReader.ReadBitflagInt32(ref ctBitflags, reader, -1);
-            Description_CTF = CaesarReader.ReadBitflagInt32(ref ctBitflags, reader, -1);
+            Qualifier = reader.ReadBitflagStringWithReader(ref ctBitflags, BaseAddress);
+            Name_CTF = reader.ReadBitflagInt32(ref ctBitflags);
+            Description_CTF = reader.ReadBitflagInt32(ref ctBitflags);
 
-            Unk3 = CaesarReader.ReadBitflagInt16(ref ctBitflags, reader);
-            Unk4 = CaesarReader.ReadBitflagInt16(ref ctBitflags, reader);
+            Unk3 = reader.ReadBitflagInt16(ref ctBitflags);
+            Unk4 = reader.ReadBitflagInt16(ref ctBitflags);
 
-            Unk5 = CaesarReader.ReadBitflagInt32(ref ctBitflags, reader);
-            Unk6 = CaesarReader.ReadBitflagInt32(ref ctBitflags, reader);
-            Unk7 = CaesarReader.ReadBitflagInt32(ref ctBitflags, reader);
+            Unk5 = reader.ReadBitflagInt32(ref ctBitflags);
+            Unk6 = reader.ReadBitflagInt32(ref ctBitflags);
+            Unk7 = reader.ReadBitflagInt32(ref ctBitflags);
 
-            Unk8 = CaesarReader.ReadBitflagUInt8(ref ctBitflags, reader);
-            Unk9 = CaesarReader.ReadBitflagUInt8(ref ctBitflags, reader);
-            Unk10 = CaesarReader.ReadBitflagInt8(ref ctBitflags, reader); // might be signed
+            Unk8 = reader.ReadBitflagUInt8(ref ctBitflags);
+            Unk9 = reader.ReadBitflagUInt8(ref ctBitflags);
+            Unk10 = reader.ReadBitflagInt8(ref ctBitflags); // might be signed
         }
 
-        public ComParameter GetComParameterByName(string paramName) 
+        public ComParameter? GetComParameterByName(string paramName) 
         {
             return CommunicationParameters.Find(x => x.ParamName == paramName);
         }
-        public int GetComParameterValue(ParamName name)
+
+        public int? GetComParameterValue(ParamName name)
         {
-            return GetComParameterByName(name.ToString()).ComParamValue;
-        }
-        public bool GetComParameterValue(ParamName name, out int result)
-        {
-            ComParameter param = GetComParameterByName(name.ToString());
-            if (param is null)
+            var comParam = GetComParameterByName(name.ToString());
+            if (comParam == null)
             {
-                result = 0;
-                return false;
+                return null;
             }
-            else 
+            else
             {
-                result = param.ComParamValue;
-                return true;
+                return comParam.ComParamValue;
             }
         }
 

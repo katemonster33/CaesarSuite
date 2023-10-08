@@ -11,39 +11,39 @@ namespace Caesar
     // 0x10: 4 :  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
     public class FlashDescriptionHeader
     {
-        public string Qualifier;
-        public int Description;
-        public int FlashAreaName;
-        public int FlashTableStructureCount;
-        public int FlashTableStructureOffset;
-        public int NumberOfUploads;
-        public int UploadTableRefTable;
-        public int NumberOfIdentServices;
-        public int IdentServicesOffset;
-        public int UniqueObjectID;
-        public int unkb;
-        public int unkc;
+        public string? Qualifier;
+        public int? Description;
+        public int? FlashAreaName;
+        public int? FlashTableStructureCount;
+        public int? FlashTableStructureOffset;
+        public int? NumberOfUploads;
+        public int? UploadTableRefTable;
+        public int? NumberOfIdentServices;
+        public int? IdentServicesOffset;
+        public int? UniqueObjectID;
+        public int? unkb;
+        public int? unkc;
         public long BaseAddress;
 
-        public FlashDescriptionHeader(BinaryReader reader, long baseAddress) 
+        public FlashDescriptionHeader(CaesarReader reader, long baseAddress) 
         {
             BaseAddress = baseAddress;
 
             reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
             ulong flashBitFlags = reader.ReadUInt32();
 
-            Qualifier = CaesarReader.ReadBitflagStringWithReader(ref flashBitFlags, reader, baseAddress);
-            Description = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
-            FlashAreaName = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
-            FlashTableStructureCount = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
-            FlashTableStructureOffset = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
-            NumberOfUploads = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
-            UploadTableRefTable = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
-            NumberOfIdentServices = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
-            IdentServicesOffset = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
-            UniqueObjectID = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
-            unkb = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
-            unkc = CaesarReader.ReadBitflagInt32(ref flashBitFlags, reader);
+            Qualifier = reader.ReadBitflagStringWithReader(ref flashBitFlags, baseAddress);
+            Description = reader.ReadBitflagInt32(ref flashBitFlags);
+            FlashAreaName = reader.ReadBitflagInt32(ref flashBitFlags);
+            FlashTableStructureCount = reader.ReadBitflagInt32(ref flashBitFlags);
+            FlashTableStructureOffset = reader.ReadBitflagInt32(ref flashBitFlags);
+            NumberOfUploads = reader.ReadBitflagInt32(ref flashBitFlags);
+            UploadTableRefTable = reader.ReadBitflagInt32(ref flashBitFlags);
+            NumberOfIdentServices = reader.ReadBitflagInt32(ref flashBitFlags);
+            IdentServicesOffset = reader.ReadBitflagInt32(ref flashBitFlags);
+            UniqueObjectID = reader.ReadBitflagInt32(ref flashBitFlags);
+            unkb = reader.ReadBitflagInt32(ref flashBitFlags);
+            unkc = reader.ReadBitflagInt32(ref flashBitFlags);
         }
 
         public void PrintDebug()

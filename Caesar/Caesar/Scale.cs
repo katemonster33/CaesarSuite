@@ -13,22 +13,22 @@ namespace Caesar
 
         // 0x0b [2,   4,4,4,4,    4,4,4,4,   4,4,4],
 
-        public int EnumLowBound;
-        public int EnumUpBound;
-        public int PrepLowBound;
-        public int PrepUpBound;
+        public int? EnumLowBound;
+        public int? EnumUpBound;
+        public int? PrepLowBound;
+        public int? PrepUpBound;
 
-        public float MultiplyFactor;
-        public float AddConstOffset;
+        public float? MultiplyFactor;
+        public float? AddConstOffset;
 
-        public int SICount;
-        public int OffsetSI;
+        public int? SICount;
+        public int? OffsetSI;
 
-        public int USCount;
-        public int OffsetUS;
+        public int? USCount;
+        public int? OffsetUS;
 
-        public int EnumDescription;
-        public int UnkC;
+        public int? EnumDescription;
+        public int? UnkC;
 
         [Newtonsoft.Json.JsonIgnore]
         private CTFLanguage Language;
@@ -38,9 +38,12 @@ namespace Caesar
             Language = language;
         }
 
-        public Scale() { }
+        public Scale() 
+        {
+            Language = new CTFLanguage();
+        }
 
-        public Scale(BinaryReader reader, long baseAddress, CTFLanguage language) 
+        public Scale(CaesarReader reader, long baseAddress, CTFLanguage language) 
         {
             BaseAddress = baseAddress;
             Language = language;
@@ -49,23 +52,23 @@ namespace Caesar
 
             ulong bitflags = reader.ReadUInt16();
 
-            EnumLowBound = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            EnumUpBound = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            EnumLowBound = reader.ReadBitflagInt32(ref bitflags);
+            EnumUpBound = reader.ReadBitflagInt32(ref bitflags);
 
-            PrepLowBound = CaesarReader.ReadBitflagInt32(ref bitflags, reader); // could be float
-            PrepUpBound = CaesarReader.ReadBitflagInt32(ref bitflags, reader); // could be float
+            PrepLowBound = reader.ReadBitflagInt32(ref bitflags); // could be float
+            PrepUpBound = reader.ReadBitflagInt32(ref bitflags); // could be float
 
-            MultiplyFactor = CaesarReader.ReadBitflagFloat(ref bitflags, reader);
-            AddConstOffset = CaesarReader.ReadBitflagFloat(ref bitflags, reader);
+            MultiplyFactor = reader.ReadBitflagFloat(ref bitflags);
+            AddConstOffset = reader.ReadBitflagFloat(ref bitflags);
 
-            SICount = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            OffsetSI = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            SICount = reader.ReadBitflagInt32(ref bitflags);
+            OffsetSI = reader.ReadBitflagInt32(ref bitflags);
 
-            USCount = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            OffsetUS = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            USCount = reader.ReadBitflagInt32(ref bitflags);
+            OffsetUS = reader.ReadBitflagInt32(ref bitflags);
 
-            EnumDescription = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            UnkC = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            EnumDescription = reader.ReadBitflagInt32(ref bitflags);
+            UnkC = reader.ReadBitflagInt32(ref bitflags);
 
         }
 

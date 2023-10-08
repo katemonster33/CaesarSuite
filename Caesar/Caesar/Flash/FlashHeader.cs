@@ -12,27 +12,27 @@ namespace Caesar
         public int CffHeaderSize;
         public long BaseAddress;
 
-        public string FlashName;
-        public string FlashGenerationParams;
-        public int Unk3;
-        public int Unk4;
-        public string FileAuthor;
-        public string FileCreationTime;
-        public string AuthoringToolVersion;
-        public string FTRAFOVersionString;
-        public int FTRAFOVersionNumber;
-        public string CFFVersionString;
-        public int NumberOfFlashAreas;
-        public int FlashDescriptionTable;
-        public int DataBlockTableCountProbably;
-        public int DataBlockRefTable;
-        public int CTFHeaderTable;
-        public int LanguageBlockLength;
-        public int NumberOfECURefs;
-        public int ECURefTable;
-        public int UnkTableCount;
-        public int UnkTableProbably;
-        public int Unk15;
+        public string? FlashName;
+        public string? FlashGenerationParams;
+        public int? Unk3;
+        public int? Unk4;
+        public string? FileAuthor;
+        public string? FileCreationTime;
+        public string? AuthoringToolVersion;
+        public string? FTRAFOVersionString;
+        public int? FTRAFOVersionNumber;
+        public string? CFFVersionString;
+        public int? NumberOfFlashAreas;
+        public int? FlashDescriptionTable;
+        public int? DataBlockTableCountProbably;
+        public int? DataBlockRefTable;
+        public int? CTFHeaderTable;
+        public int? LanguageBlockLength;
+        public int? NumberOfECURefs;
+        public int? ECURefTable;
+        public int? UnkTableCount;
+        public int? UnkTableProbably;
+        public int? Unk15;
 
         public List<FlashDataBlock> DataBlocks = new List<FlashDataBlock>();
         public List<FlashDescriptionHeader> DescriptionHeaders = new List<FlashDescriptionHeader>();
@@ -41,7 +41,7 @@ namespace Caesar
             21 bits active
             f [6, 4,4,4,4, 4,4,4,4, 4,4,4,4, 4,4,4,4, 4,4,4,4, 1],
          */
-        public FlashHeader(BinaryReader reader)
+        public FlashHeader(CaesarReader reader)
         {
             reader.BaseStream.Seek(StubHeader.StubHeaderSize, SeekOrigin.Begin);
             CffHeaderSize = reader.ReadInt32();
@@ -52,48 +52,54 @@ namespace Caesar
 
             reader.ReadUInt16(); // unused
 
-            FlashName = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
-            FlashGenerationParams = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
-            Unk3 = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            Unk4 = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            FileAuthor = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
-            FileCreationTime = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
-            AuthoringToolVersion = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
-            FTRAFOVersionString = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
-            FTRAFOVersionNumber = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            CFFVersionString = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
-            NumberOfFlashAreas = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            FlashDescriptionTable = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            DataBlockTableCountProbably = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            DataBlockRefTable = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            CTFHeaderTable = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            LanguageBlockLength = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            NumberOfECURefs = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            ECURefTable = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            UnkTableCount = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            UnkTableProbably = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            Unk15 = CaesarReader.ReadBitflagUInt8(ref bitFlags, reader);
+            FlashName = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            FlashGenerationParams = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            Unk3 = reader.ReadBitflagInt32(ref bitFlags);
+            Unk4 = reader.ReadBitflagInt32(ref bitFlags);
+            FileAuthor = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            FileCreationTime = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            AuthoringToolVersion = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            FTRAFOVersionString = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            FTRAFOVersionNumber = reader.ReadBitflagInt32(ref bitFlags);
+            CFFVersionString = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            NumberOfFlashAreas = reader.ReadBitflagInt32(ref bitFlags);
+            FlashDescriptionTable = reader.ReadBitflagInt32(ref bitFlags);
+            DataBlockTableCountProbably = reader.ReadBitflagInt32(ref bitFlags);
+            DataBlockRefTable = reader.ReadBitflagInt32(ref bitFlags);
+            CTFHeaderTable = reader.ReadBitflagInt32(ref bitFlags);
+            LanguageBlockLength = reader.ReadBitflagInt32(ref bitFlags);
+            NumberOfECURefs = reader.ReadBitflagInt32(ref bitFlags);
+            ECURefTable = reader.ReadBitflagInt32(ref bitFlags);
+            UnkTableCount = reader.ReadBitflagInt32(ref bitFlags);
+            UnkTableProbably = reader.ReadBitflagInt32(ref bitFlags);
+            Unk15 = reader.ReadBitflagUInt8(ref bitFlags);
 
             DescriptionHeaders = new List<FlashDescriptionHeader>();
-            for (int flashDescIndex = 0; flashDescIndex < NumberOfFlashAreas; flashDescIndex++)
+            if (NumberOfFlashAreas != null && FlashDescriptionTable != null)
             {
-                long flashTableEntryAddress = FlashDescriptionTable + BaseAddress + (flashDescIndex * 4);
-                reader.BaseStream.Seek(flashTableEntryAddress, SeekOrigin.Begin);
+                for (int flashDescIndex = 0; flashDescIndex < NumberOfFlashAreas; flashDescIndex++)
+                {
+                    long flashTableEntryAddress = (long)FlashDescriptionTable + BaseAddress + (flashDescIndex * 4);
+                    reader.BaseStream.Seek(flashTableEntryAddress, SeekOrigin.Begin);
 
-                long flashEntryBaseAddress = FlashDescriptionTable + BaseAddress + reader.ReadInt32();
-                FlashDescriptionHeader fdh = new FlashDescriptionHeader(reader, flashEntryBaseAddress);
-                DescriptionHeaders.Add(fdh);
+                    long flashEntryBaseAddress = (long)FlashDescriptionTable + BaseAddress + reader.ReadInt32();
+                    FlashDescriptionHeader fdh = new FlashDescriptionHeader(reader, flashEntryBaseAddress);
+                    DescriptionHeaders.Add(fdh);
+                }
             }
 
             DataBlocks = new List<FlashDataBlock>();
-            for (int dataBlockIndex = 0; dataBlockIndex < DataBlockTableCountProbably; dataBlockIndex++)
+            if (DataBlockRefTable != null && DataBlockTableCountProbably != null)
             {
-                long datablockEntryAddress = DataBlockRefTable + BaseAddress + (dataBlockIndex * 4);
-                reader.BaseStream.Seek(datablockEntryAddress, SeekOrigin.Begin);
+                for (int dataBlockIndex = 0; dataBlockIndex < DataBlockTableCountProbably; dataBlockIndex++)
+                {
+                    long datablockEntryAddress = (long)DataBlockRefTable + BaseAddress + (dataBlockIndex * 4);
+                    reader.BaseStream.Seek(datablockEntryAddress, SeekOrigin.Begin);
 
-                long datablockBaseAddress = DataBlockRefTable + BaseAddress + reader.ReadInt32();
-                FlashDataBlock fdb = new FlashDataBlock(reader, datablockBaseAddress);
-                DataBlocks.Add(fdb);
+                    long datablockBaseAddress = (long)DataBlockRefTable + BaseAddress + reader.ReadInt32();
+                    FlashDataBlock fdb = new FlashDataBlock(reader, datablockBaseAddress);
+                    DataBlocks.Add(fdb);
+                }
             }
         }
 

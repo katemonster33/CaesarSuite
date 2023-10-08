@@ -9,15 +9,15 @@ namespace Caesar
 {
     public class ComParameter
     {
-        public int ComParamIndex;
+        public short? ComParamIndex;
         // this takes precedence over SubinterfaceIndex for KW2C3PE
-        public int ParentInterfaceIndex;
-        public int SubinterfaceIndex;
-        public int Unk5;
-        public int Unk_CTF;
-        public int Phrase;
-        private int DumpSize;
-        public byte[] Dump;
+        public short? ParentInterfaceIndex;
+        public short? SubinterfaceIndex;
+        public short? Unk5;
+        public int? Unk_CTF;
+        public short? Phrase;
+        private int? DumpSize;
+        public byte[]? Dump;
        
         public int ComParamValue;
         public string ParamName = "";
@@ -30,41 +30,47 @@ namespace Caesar
             Language = language;
         }
 
-        public ComParameter() { }
+        public ComParameter() 
+        { 
+            Language =new CTFLanguage();
+        }
 
         // looks exactly like the definition in DIOpenDiagService (#T)
-        public ComParameter(BinaryReader reader, long baseAddress, List<ECUInterface> parentEcuInterfaceList, CTFLanguage language) 
+        public ComParameter(CaesarReader reader, long baseAddress, List<ECUInterface> parentEcuInterfaceList, CTFLanguage language) 
         {
             BaseAddress = baseAddress;
+            Language = language;
             reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
             ulong bitflags = reader.ReadUInt16();
 
-            ComParamIndex = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            ParentInterfaceIndex = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            SubinterfaceIndex = CaesarReader.ReadBitflagInt16(ref bitflags, reader, 0);
-            Unk5 = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            Unk_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader); // no -1? ctf strings should have -1
-            Phrase = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            DumpSize = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Dump = CaesarReader.ReadBitflagDumpWithReader(ref bitflags, reader, DumpSize, baseAddress);
+            ComParamIndex = reader.ReadBitflagInt16(ref bitflags);
+            ParentInterfaceIndex = reader.ReadBitflagInt16(ref bitflags);
+            SubinterfaceIndex = reader.ReadBitflagInt16(ref bitflags);
+            Unk5 = reader.ReadBitflagInt16(ref bitflags);
+            Unk_CTF = reader.ReadBitflagInt32(ref bitflags); // no -1? ctf strings should have -1
+            Phrase = reader.ReadBitflagInt16(ref bitflags);
+            DumpSize = reader.ReadBitflagInt32(ref bitflags);
+            Dump = reader.ReadBitflagDumpWithReader(ref bitflags, DumpSize, baseAddress);
             ComParamValue = 0;
-            if (DumpSize == 4) 
+            if (Dump != null && DumpSize == 4)
             {
                 ComParamValue = BitConverter.ToInt32(Dump, 0);
             }
 
-
-            ECUInterface parentEcuInterface = parentEcuInterfaceList[ParentInterfaceIndex];
-
-            if (ComParamIndex >= parentEcuInterface.ComParameterNames.Count)
+            if (ParentInterfaceIndex != null && ComParamIndex != null)
             {
-                // throw new Exception("Invalid communication parameter : parent interface has no matching key");
-                ParamName = "CP_UNKNOWN_MISSING_KEY";
-                Console.WriteLine($"Warning: Tried to load a communication parameter without a parent (value: {ComParamValue}), parent: {parentEcuInterface.Qualifier}.");
-            }
-            else
-            {
-                ParamName = parentEcuInterface.ComParameterNames[ComParamIndex];
+                ECUInterface parentEcuInterface = parentEcuInterfaceList[(int)ParentInterfaceIndex];
+
+                if (ComParamIndex >= parentEcuInterface.ComParameterNames.Count)
+                {
+                    // throw new Exception("Invalid communication parameter : parent interface has no matching key");
+                    ParamName = "CP_UNKNOWN_MISSING_KEY";
+                    Console.WriteLine($"Warning: Tried to load a communication parameter without a parent (value: {ComParamValue}), parent: {parentEcuInterface.Qualifier}.");
+                }
+                else 
+                {
+                    ParamName = parentEcuInterface.ComParameterNames[(int)ComParamIndex];
+                }
             }
         }
 

@@ -11,40 +11,40 @@ namespace Caesar
     public class ECUVariantPattern
     {
 
-        public int UnkBufferSize;
+        public int? UnkBufferSize;
 
-        public byte[] UnkBuffer;
-        public int Unk3;
-        public int Unk4;
-        public int Unk5;
-        public string VendorName;
+        public byte[]? UnkBuffer;
+        public int? Unk3;
+        public int? Unk4;
+        public int? Unk5;
+        public string? VendorName;
 
-        public int KwpVendorID;
-        public int Unk8;
-        public int Unk9;
-        public int Unk10;
+        public int? KwpVendorID;
+        public int? Unk8;
+        public int? Unk9;
+        public int? Unk10;
 
-        public int Unk11;
-        public int Unk12;
-        public int Unk13;
-        public int Unk14;
-        public int Unk15;
+        public int? Unk11;
+        public int? Unk12;
+        public int? Unk13;
+        public int? Unk14;
+        public int? Unk15;
 
-        public byte[] EcuId;
+        public byte[]? EcuId;
 
-        public int Unk17;
-        public int Unk18;
-        public int Unk19;
-        public int Unk20;
+        public int? Unk17;
+        public int? Unk18;
+        public int? Unk19;
+        public int? Unk20;
 
-        public string Unk21;
+        public string? Unk21;
 
-        public int Unk22;
-        public int Unk23;
-        public int UdsVendorID;
-        public int PatternType;
+        public int? Unk22;
+        public int? Unk23;
+        public int? UdsVendorID;
+        public int? PatternType;
 
-        public int VariantID;
+        public int? VariantID;
 
         private readonly long BaseAddress;
 
@@ -55,44 +55,44 @@ namespace Caesar
 
         public ECUVariantPattern() { }
 
-        public ECUVariantPattern(BinaryReader reader, long baseAddress) 
+        public ECUVariantPattern(CaesarReader reader, long baseAddress) 
         {
             BaseAddress = baseAddress;
             reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
             ulong bitflags = reader.ReadUInt32();
 
-            UnkBufferSize = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            UnkBufferSize = reader.ReadBitflagInt32(ref bitflags);
 
-            UnkBuffer = CaesarReader.ReadBitflagDumpWithReader(ref bitflags, reader, UnkBufferSize, baseAddress);
-            Unk3 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Unk4 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Unk5 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            VendorName = CaesarReader.ReadBitflagStringWithReader(ref bitflags, reader, baseAddress);
+            UnkBuffer = reader.ReadBitflagDumpWithReader(ref bitflags, UnkBufferSize, baseAddress);
+            Unk3 = reader.ReadBitflagInt32(ref bitflags);
+            Unk4 = reader.ReadBitflagInt32(ref bitflags);
+            Unk5 = reader.ReadBitflagInt32(ref bitflags);
+            VendorName = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
 
-            KwpVendorID = CaesarReader.ReadBitflagUInt16(ref bitflags, reader);
-            Unk8 = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            Unk9 = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            Unk10 = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
+            KwpVendorID = reader.ReadBitflagUInt16(ref bitflags);
+            Unk8 = reader.ReadBitflagInt16(ref bitflags);
+            Unk9 = reader.ReadBitflagInt16(ref bitflags);
+            Unk10 = reader.ReadBitflagInt16(ref bitflags);
 
-            Unk11 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
-            Unk12 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
-            Unk13 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
-            Unk14 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
-            Unk15 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
+            Unk11 = reader.ReadBitflagUInt8(ref bitflags);
+            Unk12 = reader.ReadBitflagUInt8(ref bitflags);
+            Unk13 = reader.ReadBitflagUInt8(ref bitflags);
+            Unk14 = reader.ReadBitflagUInt8(ref bitflags);
+            Unk15 = reader.ReadBitflagUInt8(ref bitflags);
 
-            EcuId = CaesarReader.ReadBitflagRawBytes(ref bitflags, reader, 4);
+            EcuId = reader.ReadBitflagRawBytes(ref bitflags, 4);
 
-            Unk17 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
-            Unk18 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
-            Unk19 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
-            Unk20 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
+            Unk17 = reader.ReadBitflagUInt8(ref bitflags);
+            Unk18 = reader.ReadBitflagUInt8(ref bitflags);
+            Unk19 = reader.ReadBitflagUInt8(ref bitflags);
+            Unk20 = reader.ReadBitflagUInt8(ref bitflags);
 
-            Unk21 = CaesarReader.ReadBitflagStringWithReader(ref bitflags, reader, baseAddress);
+            Unk21 = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
 
-            Unk22 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Unk23 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            UdsVendorID = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            PatternType = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            Unk22 = reader.ReadBitflagInt32(ref bitflags);
+            Unk23 = reader.ReadBitflagInt32(ref bitflags);
+            UdsVendorID = reader.ReadBitflagInt32(ref bitflags);
+            PatternType = reader.ReadBitflagInt32(ref bitflags);
 
             VariantID = UdsVendorID == 0 ? KwpVendorID : UdsVendorID;
             // type 3 contains a vendor name

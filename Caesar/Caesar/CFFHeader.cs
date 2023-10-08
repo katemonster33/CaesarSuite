@@ -9,18 +9,18 @@ namespace Caesar
 {
     public class CFFHeader
     {
-        public int CaesarVersion;
-        public int GpdVersion;
-        public int EcuCount;
-        public int EcuOffset;
-        public int CtfOffset; // nCtfHeaderRpos
-        public int StringPoolSize;
-        private int DscOffset;
-        private int DscCount;
-        private int DscEntrySize;
-        public string CbfVersionString;
-        public string GpdVersionString;
-        public string XmlString;
+        public int? CaesarVersion;
+        public int? GpdVersion;
+        public int? EcuCount;
+        public int? EcuOffset;
+        public int? CtfOffset; // nCtfHeaderRpos
+        public int? StringPoolSize;
+        private int? DscOffset;
+        private int? DscCount;
+        private int? DscEntrySize;
+        public string? CbfVersionString;
+        public string? GpdVersionString;
+        public string? XmlString;
 
         [Newtonsoft.Json.JsonIgnore]
         public int CffHeaderSize;
@@ -38,7 +38,7 @@ namespace Caesar
         public CFFHeader() 
         { }
 
-        public CFFHeader(BinaryReader reader) 
+        public CFFHeader(CaesarReader reader) 
         {
             reader.BaseStream.Seek(StubHeader.StubHeaderSize, SeekOrigin.Begin);
             CffHeaderSize = reader.ReadInt32();
@@ -47,28 +47,31 @@ namespace Caesar
 
             ulong bitFlags = reader.ReadUInt16();
 
-            CaesarVersion = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            GpdVersion = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            EcuCount = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            EcuOffset = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            CtfOffset = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            StringPoolSize = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            DscOffset = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            DscCount = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            DscEntrySize = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
+            CaesarVersion = reader.ReadBitflagInt32(ref bitFlags);
+            GpdVersion = reader.ReadBitflagInt32(ref bitFlags);
+            EcuCount = reader.ReadBitflagInt32(ref bitFlags);
+            EcuOffset = reader.ReadBitflagInt32(ref bitFlags);
+            CtfOffset = reader.ReadBitflagInt32(ref bitFlags);
+            StringPoolSize = reader.ReadBitflagInt32(ref bitFlags);
+            DscOffset = reader.ReadBitflagInt32(ref bitFlags);
+            DscCount = reader.ReadBitflagInt32(ref bitFlags);
+            DscEntrySize = reader.ReadBitflagInt32(ref bitFlags);
 
-            CbfVersionString = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
-            GpdVersionString = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
-            XmlString = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
+            CbfVersionString = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            GpdVersionString = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            XmlString = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
 
-            
-            long dataBufferOffsetAfterStrings = StringPoolSize + CffHeaderSize + 0x414;
-            if (DscCount > 0) 
+
+            if (StringPoolSize != null)
             {
-                DscBlockOffset = DscOffset + dataBufferOffsetAfterStrings;
-                DscBlockSize = DscEntrySize * DscCount;
-                reader.BaseStream.Seek(DscBlockOffset, SeekOrigin.Begin);
-                DSCPool = reader.ReadBytes(DscBlockSize);
+                long dataBufferOffsetAfterStrings = (long)StringPoolSize + CffHeaderSize + 0x414;
+                if (DscCount != null && DscOffset != null && DscEntrySize != null && DscCount > 0)
+                {
+                    DscBlockOffset = (long)DscOffset + dataBufferOffsetAfterStrings;
+                    DscBlockSize = (int)(DscEntrySize * DscCount);
+                    reader.BaseStream.Seek(DscBlockOffset, SeekOrigin.Begin);
+                    DSCPool = reader.ReadBytes(DscBlockSize);
+                }
             }
         }
 

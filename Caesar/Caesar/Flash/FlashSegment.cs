@@ -9,14 +9,14 @@ namespace Caesar
 {
     public class FlashSegment
     {
-        public int FromAddress;
-        public int SegmentLength;
-        public int Unk3;
-        public string SegmentName;
+        public int? FromAddress;
+        public int? SegmentLength;
+        public int? Unk3;
+        public string? SegmentName;
 
-        public int Unk5;
-        public int Unk6;
-        public int Unk7;
+        public int? Unk5;
+        public int? Unk6;
+        public int? Unk7;
 
         /*
             0x1b [2,  4,4,4,4,  4,4,4],
@@ -24,7 +24,7 @@ namespace Caesar
          */
         public long BaseAddress;
 
-        public FlashSegment(BinaryReader reader, long baseAddress)
+        public FlashSegment(CaesarReader reader, long baseAddress)
         {
             BaseAddress = baseAddress;
             reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
@@ -33,23 +33,23 @@ namespace Caesar
 
             // start reading
 
-            FromAddress = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            SegmentLength = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            Unk3 = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            SegmentName = CaesarReader.ReadBitflagStringWithReader(ref bitFlags, reader, BaseAddress);
+            FromAddress = reader.ReadBitflagInt32(ref bitFlags);
+            SegmentLength = reader.ReadBitflagInt32(ref bitFlags);
+            Unk3 = reader.ReadBitflagInt32(ref bitFlags);
+            SegmentName = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
 
-            Unk5 = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            Unk6 = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
-            Unk7 = CaesarReader.ReadBitflagInt32(ref bitFlags, reader);
+            Unk5 = reader.ReadBitflagInt32(ref bitFlags);
+            Unk6 = reader.ReadBitflagInt32(ref bitFlags);
+            Unk7 = reader.ReadBitflagInt32(ref bitFlags);
         }
 
-        public long GetMappedAddressFileOffset(BinaryReader reader)
+        public long GetMappedAddressFileOffset(CaesarReader reader)
         {
             reader.BaseStream.Seek(BaseAddress, SeekOrigin.Begin);
 
             ulong bitFlags = reader.ReadUInt16();
 
-            if (CaesarReader.CheckAndAdvanceBitflag(ref bitFlags))
+            if (reader.CheckAndAdvanceBitflag(ref bitFlags))
             {
                 return reader.BaseStream.Position;
             }
@@ -58,14 +58,14 @@ namespace Caesar
                 return -1;
             }
         }
-        public long GetSegmentLengthFileOffset(BinaryReader reader)
+        public long GetSegmentLengthFileOffset(CaesarReader reader)
         {
             reader.BaseStream.Seek(BaseAddress, SeekOrigin.Begin);
 
             ulong bitFlags = reader.ReadUInt16();
 
-            CaesarReader.ReadBitflagInt32(ref bitFlags, reader); // skip FromAddress
-            if (CaesarReader.CheckAndAdvanceBitflag(ref bitFlags))
+            reader.ReadBitflagInt32(ref bitFlags); // skip FromAddress
+            if (reader.CheckAndAdvanceBitflag(ref bitFlags))
             {
                 return reader.BaseStream.Position;
             }

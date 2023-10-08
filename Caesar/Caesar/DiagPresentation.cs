@@ -9,45 +9,45 @@ namespace Caesar
 {
     public class DiagPresentation
     {
-        public string Qualifier;
-        public int Description_CTF;
-        public int ScaleTableOffset;
-        public int ScaleCountMaybe;
-        public int Unk5;
-        public int Unk6;
-        public int Unk7;
-        public int Unk8;
-        public int Unk9;
-        public int UnkA;
-        public int UnkB;
-        public int UnkC;
-        public int UnkD;
-        public int UnkE;
-        public int UnkF;
-        public int DisplayedUnit_CTF;
-        public int Unk11;
-        public int Unk12;
-        public int EnumMaxValue;
-        public int Unk14;
-        public int Unk15;
-        public int Description2_CTF;
-        public int Unk17;
-        public int Unk18;
-        public int Unk19;
-        public int TypeLength_1A;
-        public int InternalDataType; // discovered by @prj : #37
-        public int Type_1C;
-        public int Unk1d;
-        public int SignBit; // discovered by @prj : #37
-        public int ByteOrder; // discovered by @prj : #37 ; Unset = HiLo, 1 = LoHi
-        public int Unk20;
+        public string? Qualifier;
+        public CaesarStringReference? Description;
+        public int? ScaleTableOffset;
+        public int? ScaleCountMaybe;
+        public int? Unk5;
+        public int? NumberChoices;
+        public int? Unk7;
+        public int? Unk8;
+        public int? Unk9;
+        public int? UnkA;
+        public int? UnkB;
+        public int? UnkC;
+        public int? UnkD;
+        public int? UnkE;
+        public int? UnkF;
+        public int? DisplayedUnit_CTF;
+        public int? Unk11;
+        public int? Unk12;
+        public int? EnumMaxValue;
+        public int? Unk14;
+        public int? Unk15;
+        public int? Description2_CTF;
+        public int? Unk17;
+        public int? Unk18;
+        public int? Unk19;
+        public int? TypeLength_1A;
+        public int? InternalDataType; // discovered by @prj : #37
+        public int? Type_1C;
+        public int? Unk1d;
+        public int? SignBit; // discovered by @prj : #37
+        public int? ByteOrder; // discovered by @prj : #37 ; Unset = HiLo, 1 = LoHi
+        public int? Unk20;
 
-        public int TypeLengthBytesMaybe_21;
-        public int Unk22;
-        public int Unk23;
-        public int Unk24;
-        public int Unk25;
-        public int Unk26;
+        public int? TypeLengthBytesMaybe_21;
+        public int? Unk22;
+        public int? Unk23;
+        public int? Unk24;
+        public int? Unk25;
+        public int? Unk26;
         // public string DescriptionString;
         // public string DisplayedUnitString;
         // public string DescriptionString2;
@@ -58,31 +58,35 @@ namespace Caesar
 
 
         [Newtonsoft.Json.JsonIgnore]
-        public string DescriptionString { get { return Language.GetString(Description_CTF); } }
+        public string? DisplayedUnitString { get { return Language.GetString(DisplayedUnit_CTF); } }
         [Newtonsoft.Json.JsonIgnore]
-        public string DisplayedUnitString { get { return Language.GetString(DisplayedUnit_CTF); } }
-        [Newtonsoft.Json.JsonIgnore]
-        public string DescriptionString2 { get { return Language.GetString(Description2_CTF); } }
+        public string? DescriptionString2 { get { return Language.GetString(Description2_CTF); } }
 
         [Newtonsoft.Json.JsonIgnore]
         public CTFLanguage Language;
 
-        public List<Scale> Scales = new List<Scale>();
+        public List<Scale>? Scales;
 
         public void Restore(CTFLanguage language) 
         {
             Language = language;
-            foreach (Scale s in Scales) 
+            if(Scales != null)
             {
-                s.Restore(language);
+                foreach (Scale s in Scales)
+                {
+                    s.Restore(language);
+                }
             }
         }
 
-        public DiagPresentation() { }
+        public DiagPresentation() 
+        {
+            Language = new CTFLanguage();
+        }
 
         // 0x05 [6,   4,4,4,4,  4,4,4,4,  4,4,4,4,  2,2,2,4,      4,4,4,4,   4,4,4,4,   4,4,1,1,  1,1,1,4,     4,4,2,4,   4,4],
 
-        public DiagPresentation(BinaryReader reader, long baseAddress, int presentationsIndex, CTFLanguage language) 
+        public DiagPresentation(CaesarReader reader, long baseAddress, int presentationsIndex, CTFLanguage language) 
         {
             BaseAddress = baseAddress;
             PresentationIndex = presentationsIndex;
@@ -93,67 +97,74 @@ namespace Caesar
             
             ulong extendedBitflags = reader.ReadUInt16(); // skip 2 bytes
 
-            Qualifier = CaesarReader.ReadBitflagStringWithReader(ref bitflags, reader, BaseAddress);
+            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, BaseAddress);
 
-            Description_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            ScaleTableOffset = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            ScaleCountMaybe = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            Description = reader.ReadBitflagStringRef(ref bitflags, language);
+            ScaleTableOffset = reader.ReadBitflagInt32(ref bitflags);
+            ScaleCountMaybe = reader.ReadBitflagInt32(ref bitflags);
 
-            Unk5 = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            Unk6 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Unk7 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Unk8 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            Unk5 = reader.ReadBitflagInt32(ref bitflags);
+            NumberChoices = reader.ReadBitflagInt32(ref bitflags);
+            Unk7 = reader.ReadBitflagInt32(ref bitflags);
+            Unk8 = reader.ReadBitflagInt32(ref bitflags);
 
-            Unk9 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            UnkA = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            UnkB = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            UnkC = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            Unk9 = reader.ReadBitflagInt32(ref bitflags);
+            UnkA = reader.ReadBitflagInt32(ref bitflags);
+            UnkB = reader.ReadBitflagInt32(ref bitflags);
+            UnkC = reader.ReadBitflagInt32(ref bitflags);
 
-            UnkD = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            UnkE = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            UnkF = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            DisplayedUnit_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
+            UnkD = reader.ReadBitflagInt16(ref bitflags);
+            UnkE = reader.ReadBitflagInt16(ref bitflags);
+            UnkF = reader.ReadBitflagInt16(ref bitflags);
+            DisplayedUnit_CTF = reader.ReadBitflagInt32(ref bitflags);
 
-            Unk11 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Unk12 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            EnumMaxValue = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Unk14 = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
+            Unk11 = reader.ReadBitflagInt32(ref bitflags);
+            Unk12 = reader.ReadBitflagInt32(ref bitflags);
+            EnumMaxValue = reader.ReadBitflagInt32(ref bitflags);
+            Unk14 = reader.ReadBitflagInt32(ref bitflags);
 
-            Unk15 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Description2_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            Unk17 = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            Unk18 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            Unk15 = reader.ReadBitflagInt32(ref bitflags);
+            Description2_CTF = reader.ReadBitflagInt32(ref bitflags);
+            Unk17 = reader.ReadBitflagInt32(ref bitflags);
+            Unk18 = reader.ReadBitflagInt32(ref bitflags);
 
-            Unk19 = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            TypeLength_1A = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            InternalDataType = CaesarReader.ReadBitflagInt8(ref bitflags, reader, -1);
-            Type_1C = CaesarReader.ReadBitflagInt8(ref bitflags, reader, -1);
+            Unk19 = reader.ReadBitflagInt32(ref bitflags);
+            TypeLength_1A = reader.ReadBitflagInt32(ref bitflags);
+            InternalDataType = reader.ReadBitflagInt8(ref bitflags);
+            Type_1C = reader.ReadBitflagInt8(ref bitflags);
 
-            Unk1d = CaesarReader.ReadBitflagInt8(ref bitflags, reader);
-            SignBit = CaesarReader.ReadBitflagInt8(ref bitflags, reader);
-            ByteOrder = CaesarReader.ReadBitflagInt8(ref bitflags, reader);
-            Unk20 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            Unk1d = reader.ReadBitflagInt8(ref bitflags);
+            SignBit = reader.ReadBitflagInt8(ref bitflags);
+            ByteOrder = reader.ReadBitflagInt8(ref bitflags);
+            Unk20 = reader.ReadBitflagInt32(ref bitflags);
 
             bitflags = extendedBitflags;
 
-            TypeLengthBytesMaybe_21 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Unk22 = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            Unk23 = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            Unk24 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            TypeLengthBytesMaybe_21 = reader.ReadBitflagInt32(ref bitflags);
+            Unk22 = reader.ReadBitflagInt32(ref bitflags);
+            Unk23 = reader.ReadBitflagInt16(ref bitflags);
+            Unk24 = reader.ReadBitflagInt32(ref bitflags);
 
-            Unk25 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Unk26 = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
+            Unk25 = reader.ReadBitflagInt32(ref bitflags);
+            Unk26 = reader.ReadBitflagInt32(ref bitflags);
 
 
-            long scaleTableBase = BaseAddress + ScaleTableOffset;
-            Scales = new List<Scale>();
-            for (int i = 0; i < ScaleCountMaybe; i++) 
+            if(ScaleTableOffset != null)
             {
-                reader.BaseStream.Seek(scaleTableBase + (i * 4), SeekOrigin.Begin);
-                int entryRelativeOffset = reader.ReadInt32();
+                long scaleTableBase = BaseAddress + (long)ScaleTableOffset;
+                Scales = new List<Scale>();
+                for (int i = 0; i < ScaleCountMaybe; i++)
+                {
+                    reader.BaseStream.Seek(scaleTableBase + (i * 4), SeekOrigin.Begin);
+                    int entryRelativeOffset = reader.ReadInt32();
 
-                Scale scale = new Scale(reader, scaleTableBase + entryRelativeOffset, language);
-                Scales.Add(scale);
+                    Scale scale = new Scale(reader, scaleTableBase + entryRelativeOffset, language);
+                    Scales.Add(scale);
+                }
+            }
+            else
+            {
+                Scales = null;
             }
         }
 
@@ -166,8 +177,12 @@ namespace Caesar
             isDebugBuild = true;
 #endif
 
-            string descriptionPrefix = describe ? $"{DescriptionString}: " : "";
-            byte[] workingBytes = inBytes.Skip(inPreparation.BitPosition / 8).Take(TypeLength_1A).ToArray();
+            string descriptionPrefix = describe ? $"{Description?.Text}: " : "";
+            byte[] workingBytes = new byte[0];
+            if (TypeLength_1A != null)
+            {
+                workingBytes = inBytes.Skip(inPreparation.BitPosition / 8).Take((int)TypeLength_1A).ToArray();
+            }
 
             bool isEnumType = (SignBit == 0) && ((Type_1C == 1) || (ScaleCountMaybe > 1));
 
@@ -192,7 +207,7 @@ namespace Caesar
                 byte selectedByte = inBytes[bytesToSkip];
 
                 int selectedBit = (selectedByte >> bitsToSkip) & 1;
-                if (isEnumType && (Scales.Count > selectedBit))
+                if (isEnumType && Scales != null && Scales.Count > selectedBit)
                 {
                     return $"{descriptionPrefix}{Language.GetString(Scales[selectedBit].EnumDescription)} {DisplayedUnitString}";
                 }
@@ -224,7 +239,7 @@ namespace Caesar
                 humanReadableType = "IntegerType";
 
                 parsedValue = rawIntInterpretation.ToString();
-                if (dataType == 20)
+                if (dataType == 20 && Scales != null && Scales.Count > 0)
                 {
                     humanReadableType = "ScaledType";
 
@@ -234,9 +249,11 @@ namespace Caesar
                     // if there's more than one, use the first scale as an interim solution;
                     // the results of stacking scales does not make sense
                     // there might be a better, non-hardcoded (0) solution to this, and perhaps with a sig-fig specifier
-
-                    valueToScale *= Scales[0].MultiplyFactor;
-                    valueToScale += Scales[0].AddConstOffset;
+                    if (Scales[0].MultiplyFactor != null && Scales[0].AddConstOffset != null)
+                    {
+                        valueToScale *= (double)Scales[0].MultiplyFactor;
+                        valueToScale += (double)Scales[0].AddConstOffset;
+                    }
 
                     parsedValue = valueToScale.ToString("0.000000");
                 }
@@ -276,7 +293,7 @@ namespace Caesar
                 parsedValue = Encoding.UTF8.GetString(workingBytes);
             }
 
-            if (isEnumType)
+            if (isEnumType && Scales != null)
             {
                 // discovered by @VladLupashevskyi in https://github.com/jglim/CaesarSuite/issues/27
                 // if an enum is specified, the inclusive upper bound and lower bound will be defined in the scale object
@@ -422,7 +439,7 @@ namespace Caesar
             Console.WriteLine($"{nameof(ScaleCountMaybe)}: {ScaleCountMaybe}");
 
             Console.WriteLine($"{nameof(Unk5)}: {Unk5}");
-            Console.WriteLine($"{nameof(Unk6)}: {Unk6}");
+            Console.WriteLine($"{nameof(NumberChoices)}: {NumberChoices}");
             Console.WriteLine($"{nameof(Unk7)}: {Unk7}");
             Console.WriteLine($"{nameof(Unk8)}: {Unk8}");
 
@@ -464,7 +481,7 @@ namespace Caesar
             /**/
 
 
-            Console.WriteLine($"{nameof(DescriptionString)}: {DescriptionString}");
+            Console.WriteLine($"{nameof(Description)}: {Description?.Text}");
             Console.WriteLine($"{nameof(DisplayedUnitString)}: {DisplayedUnitString}");
             Console.WriteLine($"{nameof(DescriptionString2)}: {DescriptionString2}");
             Console.WriteLine($"Type: {GetDataType()}");
@@ -472,12 +489,14 @@ namespace Caesar
             Console.WriteLine($"{nameof(TypeLength_1A)}: {TypeLength_1A}");
             Console.WriteLine($"ScaleOffset: 0x{(ScaleTableOffset + BaseAddress):X}, base of pres @ 0x{BaseAddress:X}");
 
-            foreach (Scale s in Scales)
+            if (Scales != null)
             {
-                Console.WriteLine("Scale: ");
-                s.PrintDebug();
+                foreach (Scale s in Scales)
+                {
+                    Console.WriteLine("Scale: ");
+                    s.PrintDebug();
+                }
             }
-
             Console.WriteLine("Presentation end");
         }
 
@@ -486,7 +505,7 @@ namespace Caesar
             StringBuilder sb = new StringBuilder();
             sb.Append("PRES: ");
             sb.Append($" {nameof(Unk5)}: {Unk5}");
-            sb.Append($" {nameof(Unk6)}: {Unk6}");
+            sb.Append($" {nameof(NumberChoices)}: {NumberChoices}");
             sb.Append($" {nameof(Unk7)}: {Unk7}");
             sb.Append($" {nameof(Unk8)}: {Unk8}");
             sb.Append($" {nameof(Unk9)}: {Unk9}");

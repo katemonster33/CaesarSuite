@@ -9,17 +9,17 @@ namespace Caesar
 {
     public class VCSubfragment
     {
-        public int Name_CTF;
-        public byte[] Dump;
-        public int Description_CTF;
-        public string QualifierUsuallyDisabled;
-        public int Unk3;
-        public int Unk4;
-        public string SupplementKey;
+        public int? Name_CTF;
+        public byte[]? Dump;
+        public int? Description_CTF;
+        public string? QualifierUsuallyDisabled;
+        public int? Unk3;
+        public int? Unk4;
+        public string? SupplementKey;
 
 
         [Newtonsoft.Json.JsonIgnore]
-        public string NameResolved { get { return Language.GetString(Description_CTF); } }
+        public string? NameResolved { get { return Language.GetString(Description_CTF); } }
 
         [Newtonsoft.Json.JsonIgnore]
         CTFLanguage Language;
@@ -29,26 +29,29 @@ namespace Caesar
             Language = language;
         }
 
-        public VCSubfragment() { }
+        public VCSubfragment() 
+        {
+            Language = new CTFLanguage();
+        }
 
-        public VCSubfragment(BinaryReader reader, VCFragment parentFragment, CTFLanguage language, long baseAddress)
+        public VCSubfragment(CaesarReader reader, VCFragment parentFragment, CTFLanguage language, long baseAddress)
         {
             // see DIOpenCBF_FragValHandle
             Language = language;
             reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
             ulong bitflags = reader.ReadUInt16();
 
-            Name_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
+            Name_CTF = reader.ReadBitflagInt32(ref bitflags);
             if (parentFragment.CCFHandle == 5) 
             {
                 // fragment should be parsed as PBSGetDumpAsStringFn, though internally we perceive this as the same
             }
-            Dump = CaesarReader.ReadBitflagDumpWithReader(ref bitflags, reader, parentFragment.VarcodeDumpSize, baseAddress);
-            Description_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            QualifierUsuallyDisabled = CaesarReader.ReadBitflagStringWithReader(ref bitflags, reader, baseAddress);
-            Unk3 = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            Unk4 = CaesarReader.ReadBitflagInt16(ref bitflags, reader, -1);
-            SupplementKey = CaesarReader.ReadBitflagStringWithReader(ref bitflags, reader, baseAddress);
+            Dump = reader.ReadBitflagDumpWithReader(ref bitflags, parentFragment.VarcodeDumpSize, baseAddress);
+            Description_CTF = reader.ReadBitflagInt32(ref bitflags);
+            QualifierUsuallyDisabled = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
+            Unk3 = reader.ReadBitflagInt32(ref bitflags);
+            Unk4 = reader.ReadBitflagInt16(ref bitflags);
+            SupplementKey = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
 
             //int subfragmentIdk2 = reader.ReadInt32();
             //int subfragmentName = reader.ReadInt32();

@@ -31,7 +31,7 @@ namespace Trafo
             string path = args[0];
 #endif
             byte[] cbfBytes = File.ReadAllBytes(path);
-
+            
             CaesarContainer container = new CaesarContainer(cbfBytes);
 
             List<object> ecuList = new List<object>();

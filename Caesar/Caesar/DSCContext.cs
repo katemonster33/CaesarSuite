@@ -13,7 +13,7 @@ namespace Caesar
         public DSCContext(byte[] dscContainerBytes) 
         {
             const int fnTableEntrySize = 50;
-            using (BinaryReader reader = new BinaryReader(new MemoryStream(dscContainerBytes, 0, dscContainerBytes.Length, true, true)))
+            using (CaesarReader reader = new CaesarReader(new MemoryStream(dscContainerBytes, 0, dscContainerBytes.Length, true, true)))
             {
                 reader.BaseStream.Seek(0x10, SeekOrigin.Begin);
                 int fnTableOffset = reader.ReadInt32(); // @ 0x10, originally i16
@@ -94,7 +94,7 @@ namespace Caesar
                     int arraySize = reader.ReadInt16();
                     int positionInGlobalBuffer = reader.ReadInt16();
                     reader.BaseStream.Seek(varName, SeekOrigin.Begin);
-                    string varNameResolved = CaesarReader.ReadStringFromBinaryReader(reader, CaesarReader.DefaultEncoding);
+                    string varNameResolved = reader.ReadString(Encoding.UTF8);
 
                     int dataSizeInBytes = GetDscTypeSize((int)baseType, (int)derivedType);
                     if (derivedType == DSCDerivedType.Array) 
@@ -132,7 +132,7 @@ namespace Caesar
                     int outputParamCount = reader.ReadInt16(); // @ 48
 
                     reader.BaseStream.Seek(fnNameOffset, SeekOrigin.Begin);
-                    string fnName = CaesarReader.ReadStringFromBinaryReader(reader);
+                    string fnName = reader.ReadString();
 
                     Console.WriteLine($"Fn: {fnName} Ordinal: {fnIdentifier} EP: 0x{fnEntryPoint:X}, InParam: {inputParamCount} @ 0x{inputParamOffset:X}, OutParam: {outputParamCount} @ 0x{outputParamOffset}");
 

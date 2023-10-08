@@ -9,56 +9,67 @@ namespace Caesar
 {
     public class CTFLanguage
     {
-        public string Qualifier;
-        public int LanguageIndex;
-        private int StringPoolSize;
-        private int MaybeOffsetFromStringPoolBase;
-        private int StringCount;
-        public List<string> StringEntries;
+        public string? Qualifier;
+        public int? LanguageIndex;
+        private int? StringPoolSize;
+        private int? MaybeOffsetFromStringPoolBase;
+        private int? StringCount;
+        public List<string>? StringEntries;
 
         public long BaseAddress;
         public CTFLanguage() { }
-        public CTFLanguage(BinaryReader reader, long baseAddress, int headerSize) 
+        public CTFLanguage(CaesarReader reader, long baseAddress, int headerSize) 
         {
             BaseAddress = baseAddress;
             reader.BaseStream.Seek(BaseAddress, SeekOrigin.Begin);
             ulong languageEntryBitflags = reader.ReadUInt16();
 
-            Qualifier = CaesarReader.ReadBitflagStringWithReader(ref languageEntryBitflags, reader, BaseAddress);
-            LanguageIndex = CaesarReader.ReadBitflagInt16(ref languageEntryBitflags, reader);
-            StringPoolSize = CaesarReader.ReadBitflagInt32(ref languageEntryBitflags, reader);
-            MaybeOffsetFromStringPoolBase = CaesarReader.ReadBitflagInt32(ref languageEntryBitflags, reader);
-            StringCount = CaesarReader.ReadBitflagInt32(ref languageEntryBitflags, reader);
+            Qualifier = reader.ReadBitflagStringWithReader(ref languageEntryBitflags, BaseAddress);
+            LanguageIndex = reader.ReadBitflagInt16(ref languageEntryBitflags);
+            StringPoolSize = reader.ReadBitflagInt32(ref languageEntryBitflags);
+            MaybeOffsetFromStringPoolBase = reader.ReadBitflagInt32(ref languageEntryBitflags);
+            StringCount = reader.ReadBitflagInt32(ref languageEntryBitflags);
 
-            LoadStrings(reader, headerSize, CaesarReader.DefaultEncoding);
+            LoadStrings(reader, headerSize);
         }
 
-        public void LoadStrings(BinaryReader reader, int headerSize, Encoding encoding) 
+        public void LoadStrings(CaesarReader reader, int headerSize) 
         {
-            StringEntries = new List<string>();
-            int caesarStringTableOffset = headerSize + 0x410 + 4; // header.CffHeaderSize; strange that this has to be manually computed
-            for (int i = 0; i < StringCount; i++) 
+            if (StringCount != null)
             {
-                reader.BaseStream.Seek(caesarStringTableOffset + (i * 4), SeekOrigin.Begin);
-                int stringOffset = reader.ReadInt32();
-                reader.BaseStream.Seek(caesarStringTableOffset + stringOffset, SeekOrigin.Begin);
-                string result = CaesarReader.ReadStringFromBinaryReader(reader, encoding);
-                StringEntries.Add(result);
+                StringEntries = new List<string>();
+                int caesarStringTableOffset = headerSize + 0x410 + 4; // header.CffHeaderSize; strange that this has to be manually computed
+                for (int i = 0; i < StringCount; i++)
+                {
+                    reader.BaseStream.Seek(caesarStringTableOffset + (i * 4), SeekOrigin.Begin);
+                    int stringOffset = reader.ReadInt32();
+                    reader.BaseStream.Seek(caesarStringTableOffset + stringOffset, SeekOrigin.Begin);
+                    string result = reader.ReadString(Encoding.UTF8);
+                    StringEntries.Add(result);
+                }
+            }
+            else StringEntries = null;
+        }
+
+        public string? GetString(int? stringId) 
+        {
+            if (stringId != null)
+            {
+                return GetString(StringEntries, (int)stringId);
+            }
+            else
+            { 
+                return null; 
             }
         }
 
-        public string GetString(int stringId) 
-        {
-            return GetString(StringEntries, stringId);
-        }
-
-        public static string GetString(List<string> language, int stringId) 
+        public static string GetString(List<string>? language, int stringId) 
         {
             if (stringId < 0) 
             {
                 return "";
             }
-            if (stringId > language.Count) 
+            if (language == null || stringId > language.Count) 
             {
                 return "";
             }

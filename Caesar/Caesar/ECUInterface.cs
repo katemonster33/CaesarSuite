@@ -9,14 +9,14 @@ namespace Caesar
 {
     public class ECUInterface
     {
-        public string Qualifier;
-        public int Name_CTF;
-        public int Description_CTF;
-        public string VersionString;
-        public int Version;
-        private int ComParamCount;
-        private int ComParamListOffset;
-        public int Unk6;
+        public string? Qualifier;
+        public CaesarStringReference? Name;
+        public CaesarStringReference? Description;
+        public string? VersionString;
+        public int? Version;
+        private int? ComParamCount;
+        private int? ComParamListOffset;
+        public int? Unk6;
         
 
         public List<string> ComParameterNames = new List<string>();
@@ -29,46 +29,54 @@ namespace Caesar
             Language = language;
         }
 
-        public ECUInterface() { }
-
-        public ECUInterface(BinaryReader reader, long baseAddress)
+        public ECUInterface() 
         {
+            Language = new CTFLanguage();
+            BaseAddress = -1;
+        }
+
+        public ECUInterface(CaesarReader reader, long baseAddress)
+        {
+            Language = new CTFLanguage();
             BaseAddress = baseAddress;
             reader.BaseStream.Seek(BaseAddress, SeekOrigin.Begin);
 
             // we can now properly operate on the interface block
             ulong interfaceBitflags = reader.ReadUInt32();
 
-            Qualifier = CaesarReader.ReadBitflagStringWithReader(ref interfaceBitflags, reader, BaseAddress);
-            Name_CTF = CaesarReader.ReadBitflagInt32(ref interfaceBitflags, reader, -1);
-            Description_CTF = CaesarReader.ReadBitflagInt32(ref interfaceBitflags, reader, -1);
-            VersionString = CaesarReader.ReadBitflagStringWithReader(ref interfaceBitflags, reader, BaseAddress);
-            Version = CaesarReader.ReadBitflagInt32(ref interfaceBitflags, reader);
-            ComParamCount = CaesarReader.ReadBitflagInt32(ref interfaceBitflags, reader);
-            ComParamListOffset = CaesarReader.ReadBitflagInt32(ref interfaceBitflags, reader);
-            Unk6 = CaesarReader.ReadBitflagInt16(ref interfaceBitflags, reader);
+            Qualifier = reader.ReadBitflagStringWithReader(ref interfaceBitflags, BaseAddress);
+            Name = reader.ReadBitflagStringRef(ref interfaceBitflags, Language);
+            Description = reader.ReadBitflagStringRef(ref interfaceBitflags, Language);
+            VersionString = reader.ReadBitflagStringWithReader(ref interfaceBitflags, BaseAddress);
+            Version = reader.ReadBitflagInt32(ref interfaceBitflags);
+            ComParamCount = reader.ReadBitflagInt32(ref interfaceBitflags);
+            ComParamListOffset = reader.ReadBitflagInt32(ref interfaceBitflags);
+            Unk6 = reader.ReadBitflagInt16(ref interfaceBitflags);
 
 
-            long comparamFileOffset = ComParamListOffset + BaseAddress;
-            // Console.WriteLine($"interface string table offset from definition block : {interfaceStringTableOffset_fromDefinitionBlock:X}");
-
-            for (int interfaceStringIndex = 0; interfaceStringIndex < ComParamCount; interfaceStringIndex++)
+            if (ComParamListOffset != null && ComParamCount != null)
             {
-                // seek to string pointer
-                reader.BaseStream.Seek(comparamFileOffset + (interfaceStringIndex * 4), SeekOrigin.Begin);
-                // from pointer, seek to string
-                long interfaceStringReadoutPtr = reader.ReadInt32() + comparamFileOffset;
-                reader.BaseStream.Seek(interfaceStringReadoutPtr, SeekOrigin.Begin);
-                string comParameter = CaesarReader.ReadStringFromBinaryReader(reader);
-                ComParameterNames.Add(comParameter);
+                long comparamFileOffset = (long)ComParamListOffset + BaseAddress;
+                // Console.WriteLine($"interface string table offset from definition block : {interfaceStringTableOffset_fromDefinitionBlock:X}");
+
+                for (int interfaceStringIndex = 0; interfaceStringIndex < ComParamCount; interfaceStringIndex++)
+                {
+                    // seek to string pointer
+                    reader.BaseStream.Seek(comparamFileOffset + (interfaceStringIndex * 4), SeekOrigin.Begin);
+                    // from pointer, seek to string
+                    long interfaceStringReadoutPtr = reader.ReadInt32() + comparamFileOffset;
+                    reader.BaseStream.Seek(interfaceStringReadoutPtr, SeekOrigin.Begin);
+                    string comParameter = reader.ReadString();
+                    ComParameterNames.Add(comParameter);
+                }
             }
         }
 
         public void PrintDebug() 
         {
             Console.WriteLine($"{nameof(Qualifier)} : {Qualifier}");
-            Console.WriteLine($"{nameof(Name_CTF)} : {Name_CTF}");
-            Console.WriteLine($"{nameof(Description_CTF)} : {Description_CTF}");
+            Console.WriteLine($"{nameof(Name)} : {Name?.Text}");
+            Console.WriteLine($"{nameof(Description)} : {Description?.Text}");
             Console.WriteLine($"{nameof(VersionString)} : {VersionString}");
             Console.WriteLine($"{nameof(Version)} : {Version}");
             Console.WriteLine($"{nameof(ComParamCount)} : {ComParamCount}");

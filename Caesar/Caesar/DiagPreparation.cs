@@ -9,19 +9,19 @@ namespace Caesar
 {
     public class DiagPreparation
     {
-        public string Qualifier;
-        public int Name_CTF;
-        public int Unk1;
-        public int Unk2;
-        public int AlternativeBitWidth;
-        public int IITOffset;
-        public int InfoPoolIndex;
-        public int PresPoolIndex;
-        public int Field1E;
-        public int SystemParam;
-        public int DumpMode;
-        private int DumpSize;
-        public byte[] Dump;
+        public string? Qualifier;
+        public int? Name_CTF;
+        public int? Unk1;
+        public int? Unk2;
+        public int? AlternativeBitWidth;
+        public int? IITOffset;
+        public int? InfoPoolIndex;
+        public int? PresPoolIndex;
+        public int? Field1E;
+        public int? SystemParam;
+        public int? DumpMode;
+        private int? DumpSize;
+        public byte[]? Dump;
 
         public int BitPosition;
         public ushort ModeConfig;
@@ -58,12 +58,17 @@ namespace Caesar
             ParentDiagService = parentDiagService;
         }
 
-        public DiagPreparation() { }
+        public DiagPreparation() 
+        {
+            Language = new CTFLanguage();
+            ParentECU = new ECU();
+            ParentDiagService = new DiagService();
+        }
 
         // void __cdecl DiagServiceReadPresentation(int *inBase, DECODED_PRESENTATION *outPresentation)
         // Looks like its actually a presentation
         // See DIDiagservice* functions
-        public DiagPreparation(BinaryReader reader, CTFLanguage language, long baseAddress, int bitPosition, ushort modeConfig, ECU parentEcu, DiagService parentDiagService)
+        public DiagPreparation(CaesarReader reader, CTFLanguage language, long baseAddress, int bitPosition, ushort modeConfig, ECU parentEcu, DiagService parentDiagService)
         {
             BitPosition = bitPosition;
             ModeConfig = modeConfig;
@@ -76,24 +81,24 @@ namespace Caesar
             ulong bitflags = reader.ReadUInt32();
 
 
-            Qualifier = CaesarReader.ReadBitflagStringWithReader(ref bitflags, reader, baseAddress);
-            Name_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            Unk1 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
-            Unk2 = CaesarReader.ReadBitflagUInt8(ref bitflags, reader);
-            AlternativeBitWidth = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            IITOffset = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            InfoPoolIndex = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            PresPoolIndex = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            Field1E = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            SystemParam = CaesarReader.ReadBitflagInt16(ref bitflags, reader, -1);
-            DumpMode = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            DumpSize = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            if (DumpMode == 5) 
+            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
+            Name_CTF = reader.ReadBitflagInt32(ref bitflags);
+            Unk1 = reader.ReadBitflagUInt8(ref bitflags);
+            Unk2 = reader.ReadBitflagUInt8(ref bitflags);
+            AlternativeBitWidth = reader.ReadBitflagInt32(ref bitflags);
+            IITOffset = reader.ReadBitflagInt32(ref bitflags);
+            InfoPoolIndex = reader.ReadBitflagInt32(ref bitflags);
+            PresPoolIndex = reader.ReadBitflagInt32(ref bitflags);
+            Field1E = reader.ReadBitflagInt32(ref bitflags);
+            SystemParam = reader.ReadBitflagInt16(ref bitflags);
+            DumpMode = reader.ReadBitflagInt16(ref bitflags);
+            DumpSize = reader.ReadBitflagInt32(ref bitflags);
+            if (DumpMode == 5)
             {
                 // dump is actually a string, use
                 // CaesarReader.ReadBitflagDumpWithReaderAsString
             }
-            Dump = CaesarReader.ReadBitflagDumpWithReader(ref bitflags, reader, DumpSize, baseAddress);
+            Dump = reader.ReadBitflagDumpWithReader(ref bitflags, DumpSize, baseAddress);
 
             SizeInBits = GetSizeInBits(reader);
             // PrintDebug();
@@ -129,10 +134,10 @@ namespace Caesar
                     resultBitSize = IntegerSizeMapping[modeL];
                     FieldType = InferredDataType.IntegerType;
                 }
-                else if (modeH == 0x330)
+                else if (modeH == 0x330 && AlternativeBitWidth != null)
                 {
                     // this behavior is also okay
-                    resultBitSize = AlternativeBitWidth; // inPres + 20
+                    resultBitSize = (int)AlternativeBitWidth; // inPres + 20
                     FieldType = InferredDataType.BitDumpType;
                 }
                 else if (modeH == 0x340)
@@ -147,16 +152,16 @@ namespace Caesar
             else 
             {
                 // if systemparam is -1.. load a default system type
-                if (SystemParam == -1)
+                if (SystemParam == null)
                 {
                     // apparently both 0x2000 and 0x8000 source from different pools, but use the same PRESENTATION structure
-                    if (modeE == 0x8000)
+                    if (modeE == 0x8000 && InfoPoolIndex != null)
                     {
                         FieldType = InferredDataType.NativeInfoPoolType;
                         byte[] poolBytes = ParentECU.ReadECUInfoPool(reader);
                         using (BinaryReader poolReader = new BinaryReader(new MemoryStream(poolBytes)))
                         {
-                            DiagPresentation pres = ParentECU.GlobalInternalPresentations[InfoPoolIndex];
+                            DiagPresentation pres = ParentECU.GlobalInternalPresentations[(int)InfoPoolIndex];
                             /*
                             // depreciate use of ReadCBFWithOffset
                             poolReader.BaseStream.Seek(ParentECU.Info_EntrySize * InfoPoolIndex, SeekOrigin.Begin);
@@ -178,51 +183,60 @@ namespace Caesar
                                 resultBitSize = CaesarStructure.ReadCBFWithOffset(0x21, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // ???
                             }
                             */
-                            resultBitSize = pres.TypeLength_1A > 0 ? pres.TypeLength_1A : pres.TypeLengthBytesMaybe_21;
+                            if (pres.TypeLength_1A != null && pres.TypeLengthBytesMaybe_21 != null)
+                            {
+                                resultBitSize = (int)(pres.TypeLength_1A > 0 ? pres.TypeLength_1A : pres.TypeLengthBytesMaybe_21);
+                            }
 
                             // if value was specified in bytes, convert to bits
-                            if (pres.Type_1C == 0)
+                            if (pres.Type_1C != null && pres.Type_1C == 0)
                             {
                                 resultBitSize *= 8;
                             }
                         }
                     }
-                    else if (modeE == 0x2000)
+                    else if (modeE == 0x2000 && PresPoolIndex != null)
                     {
                         FieldType = InferredDataType.NativePresentationType;
-                        byte[] presPool = ParentECU.ReadECUPresentationsPool(reader);
+                        //byte[] presPool = ParentECU.ReadECUPresentationsPool(reader);
 
-                        using (BinaryReader poolReader = new BinaryReader(new MemoryStream(presPool)))
+                        if (PresPoolIndex != null)
                         {
-                            DiagPresentation pres = ParentECU.GlobalPresentations[PresPoolIndex];
-                            /*
-                            // depreciate use of ReadCBFWithOffset
-                            poolReader.BaseStream.Seek(ParentECU.Presentations_EntrySize * PresPoolIndex, SeekOrigin.Begin);
-                            int presentationStructOffset = poolReader.ReadInt32();
-                            int presentationStructSize = poolReader.ReadInt32();
-
-                            reader.BaseStream.Seek(presentationStructOffset + ParentECU.Presentations_BlockOffset, SeekOrigin.Begin);
-                            byte[] presentationStruct = reader.ReadBytes(presentationStructSize);
-                            
-                            int presentationMode = CaesarStructure.ReadCBFWithOffset(0x1C, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_Type
-                            int presentationLength = CaesarStructure.ReadCBFWithOffset(0x1A, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_TypeLength
-                            
-                            if (presentationLength > 0)
+                            //using (BinaryReader poolReader = new BinaryReader(new MemoryStream(presPool)))
                             {
-                                resultBitSize = presentationLength;
-                            }
-                            else
-                            {
-                                resultBitSize = CaesarStructure.ReadCBFWithOffset(0x21, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // ???
-                            }
-                            */
+                                DiagPresentation pres = ParentECU.GlobalPresentations[(int)PresPoolIndex];
+                                /*
+                                // depreciate use of ReadCBFWithOffset
+                                poolReader.BaseStream.Seek(ParentECU.Presentations_EntrySize * PresPoolIndex, SeekOrigin.Begin);
+                                int presentationStructOffset = poolReader.ReadInt32();
+                                int presentationStructSize = poolReader.ReadInt32();
 
-                            resultBitSize = pres.TypeLength_1A > 0 ? pres.TypeLength_1A : pres.TypeLengthBytesMaybe_21;
+                                reader.BaseStream.Seek(presentationStructOffset + ParentECU.Presentations_BlockOffset, SeekOrigin.Begin);
+                                byte[] presentationStruct = reader.ReadBytes(presentationStructSize);
 
-                            // if value was specified in bytes, convert to bits
-                            if (pres.Type_1C == 0)
-                            {
-                                resultBitSize *= 8;
+                                int presentationMode = CaesarStructure.ReadCBFWithOffset(0x1C, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_Type
+                                int presentationLength = CaesarStructure.ReadCBFWithOffset(0x1A, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_TypeLength
+
+                                if (presentationLength > 0)
+                                {
+                                    resultBitSize = presentationLength;
+                                }
+                                else
+                                {
+                                    resultBitSize = CaesarStructure.ReadCBFWithOffset(0x21, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // ???
+                                }
+                                */
+
+                                if (pres.TypeLength_1A != null && pres.TypeLengthBytesMaybe_21 != null && pres.Type_1C != null)
+                                {
+                                    resultBitSize = (int)(pres.TypeLength_1A > 0 ? pres.TypeLength_1A : pres.TypeLengthBytesMaybe_21);
+
+                                    // if value was specified in bytes, convert to bits
+                                    if (pres.Type_1C == 0)
+                                    {
+                                        resultBitSize *= 8;
+                                    }
+                                }
                             }
                         }
                     }
@@ -239,7 +253,7 @@ namespace Caesar
                     // DIInternalRetrieveSpecialPreparation officially supports 0x410, 0x420 only
                     if (modeH == 0x410)
                     {
-                        int reducedSysParam = SystemParam - 0x10;
+                        int reducedSysParam = (int)SystemParam - 0x10;
                         if (reducedSysParam == 0)
                         {
                             // specifically requests for LOBYTE (& 0xFF)
@@ -253,11 +267,11 @@ namespace Caesar
                             // open a diagservice based on inputRef name
                             // this is experimental, haven't seen a cbf that uses this yet
                             Console.WriteLine($"Parsing experimental 0x410 prep with sysparam 17 at {Qualifier}");
-                            DiagService referencedDs = ParentECU.GlobalDiagServices.Find(x => x.Qualifier == ParentDiagService.InputRefNameMaybe);
-                            if (referencedDs != null)
+                            DiagService? referencedDs = ParentECU.GlobalDiagServices.Find(x => x.Qualifier == ParentDiagService.InputRefNameMaybe);
+                            if (referencedDs != null && referencedDs.DataClass_ServiceTypeShifted != null)
                             {
                                 bool referencedDsHasRequestData = referencedDs.RequestBytes.Length > 0; // supposed to check if requestMessage is valid too
-                                int internalType = referencedDs.DataClass_ServiceTypeShifted;
+                                int internalType = (int)referencedDs.DataClass_ServiceTypeShifted;
                                 if (((referencedDs.DataClass_ServiceTypeShifted & 0xC) > 0) && referencedDsHasRequestData)
                                 {
                                     if ((referencedDs.DataClass_ServiceTypeShifted & 4) > 0)
@@ -269,10 +283,10 @@ namespace Caesar
                                         internalType = 0x20000000;
                                     }
                                 }
-                                if ((internalType & 0x10000) != 0)
+                                if ((internalType & 0x10000) != 0 && ParentDiagService.P_Count != null)
                                 {
                                     // referenced type is a global variable
-                                    resultBitSize = ParentDiagService.P_Count * 8;
+                                    resultBitSize = (int)(ParentDiagService.P_Count * 8);
                                     FieldType = InferredDataType.UnhandledSP17Type;
                                 }
                                 else
@@ -302,7 +316,7 @@ namespace Caesar
                         FieldType = InferredDataType.IntegerType;
                         resultBitSize = IntegerSizeMapping[modeL];
                     }
-                    else if (modeH == 0x430)
+                    else if (modeH == 0x430 && AlternativeBitWidth != null)
                     {
                         // mode 0x430 is nonstandard and doesn't seem to exist in the function that I was disassembling
                         /*
@@ -312,7 +326,7 @@ namespace Caesar
                             See 0x320 vs 0x330, seems to be similar
                         */
 
-                        resultBitSize = AlternativeBitWidth; // inPres + 20
+                        resultBitSize = (int)AlternativeBitWidth; // inPres + 20
                         FieldType = InferredDataType.BitDumpType;
                     }
                     else

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Caesar
 {
-    public class DTC
+    public class DTC : CaesarObject
     {
         public enum DTCStatusByte : uint
         {
@@ -21,75 +21,73 @@ namespace Caesar
             WarningIndicatorActive = 0x80,
         }
 
+        public int CRC;
+
         // see : const char *__cdecl DIGetComfortErrorCode(DI_ECUINFO *ecuh, unsigned int dtcIndex)
-        public string Qualifier;
+        public string? Qualifier;
 
-        public int Description_CTF;
-        public int Reference_CTF;
+        public CaesarStringReference? Description;
+        public CaesarStringReference? Reference;
 
-        public int XrefStart = -1;
-        public int XrefCount = -1;
+        public int? XrefStart = -1;
+        public int? XrefCount = -1;
 
         private long BaseAddress;
         public int PoolIndex;
 
-        [Newtonsoft.Json.JsonIgnore]
-        public ECU ParentECU;
-        [Newtonsoft.Json.JsonIgnore]
-        CTFLanguage Language;
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Description { get { return Language.GetString(Description_CTF); } }
-
-        public void Restore(CTFLanguage language, ECU parentEcu) 
+        public DTC() 
         {
-            ParentECU = parentEcu;
-            Language = language;
+            PoolIndex = -1;
+            BaseAddress = -1;
+            CRC = -1;
         }
 
-        public DTC() { }
-
-        public DTC(BinaryReader reader, CTFLanguage language, long baseAddress, int poolIndex, ECU parentEcu)
+        public DTC(CTFLanguage language, long baseAddress, int poolIndex, ECU parentEcu)
         {
-            ParentECU = parentEcu;
             PoolIndex = poolIndex;
             BaseAddress = baseAddress;
-            Language = language;
-            reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
-
-            ulong bitflags = reader.ReadUInt16();
-
-            Qualifier = CaesarReader.ReadBitflagStringWithReader(ref bitflags, reader, baseAddress);
-
-            Description_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            Reference_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-#if DEBUG
-            if (bitflags > 0) 
-            {
-                Console.WriteLine($"DTC {Qualifier} has additional unparsed fields : 0x{bitflags:X}");
-            }
-#endif
+            CRC = -1;
         }
-        /*
-        public string GetDescription() 
-        {
-            return Language.GetString(Description_CTF);
-        }
-        */
-        public static DTC FindDTCById(string id, ECUVariant variant)
+
+        public static DTC? FindDTCById(string id, ECUVariant variant)
         {
             foreach (DTC dtc in variant.DTCs)
             {
-                if (dtc.Qualifier.EndsWith(id))
+                if (dtc.Qualifier != null && dtc.Qualifier.EndsWith(id))
                 {
                     return dtc;
                 }
             }
             return null;
         }
-        public void PrintDebug() 
+
+        public override string ToString() 
         {
-            Console.WriteLine($"DTC: {Qualifier}: {Language.GetString(Description_CTF)} : {Language.GetString(Reference_CTF)}");
+            return $"DTC: {Qualifier}: {Description} : {Reference}";
+        }
+
+        protected override void ReadHeader(CaesarReader reader, int baseOffset)
+        {
+            HeaderSize = 12;
+            base.ReadHeader(reader, baseOffset);
+
+            CRC = reader.ReadInt32();
+        }
+
+        protected override void ReadData(CaesarReader reader, CTFLanguage language)
+        {
+            ulong bitflags = reader.ReadUInt16();
+
+            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, Address);
+
+            Description = reader.ReadBitflagStringRef(ref bitflags, language);
+            Reference = reader.ReadBitflagStringRef(ref bitflags, language);
+#if DEBUG
+            if (bitflags > 0)
+            {
+                Console.WriteLine($"DTC {Qualifier} has additional unparsed fields : 0x{bitflags:X}");
+            }
+#endif
         }
     }
 }
