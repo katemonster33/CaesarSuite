@@ -3,16 +3,17 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Caesar
 {
-    public class ECU
+    public class ECU : CaesarObject
     {
         public string? Qualifier;
-        public int? EcuName_CTF;
-        public int? EcuDescription_CTF;
+        public CaesarStringReference? EcuName;
+        public CaesarStringReference? EcuDescription;
         public string? EcuXmlVersion;
         public int? InterfaceBlockCount;
         public int? InterfaceTableOffset;
@@ -34,29 +35,20 @@ namespace Caesar
         private int? EcuVariant_EntrySize;
         private int? EcuVariant_BlockSize;
 
-        private int? DiagJob_BlockOffset; // 2
-        private int? DiagJob_EntryCount;
-        private int? DiagJob_EntrySize;
-        private int? DiagJob_BlockSize;
+        public CaesarTable<DiagService>? GlobalDiagServices;
 
-        public CaesarTable<DTC> GlobalDTCs;
+        public CaesarTable<DTC>? GlobalDTCs;
 
-        public CaesarTable<DiagService> GlobalEnvironmentContexts;
+        public CaesarTable<DiagService>? GlobalEnvironmentContexts;
 
         private int? VcDomain_BlockOffset; // 5 , 0x15716
         private int? VcDomain_EntryCount; // [1], 43 0x2B
         private int? VcDomain_EntrySize; // [2], 12 0xC (multiply with [1] for size), 43*12=516 = 0x204
         private int? VcDomain_BlockSize; // [3] unused
 
-        private int? Presentations_BlockOffset;
-        private int? Presentations_EntryCount;
-        private int? Presentations_EntrySize;
-        private int? Presentations_BlockSize;
+        public CaesarTable<DiagPresentation>? GlobalPresentations;
 
-        private int? InternalPresentations_BlockOffset; // 31 (formerly InfoPool)
-        private int? InternalPresentations_EntryCount; // 32
-        private int? InternalPresentations_EntrySize; // 33
-        private int? InternalPresentations_BlockSize; // 34
+        public CaesarTable<DiagPresentation>? GlobalInternalPresentations;
 
         private int? Unk_BlockOffset;
         private int? Unk_EntryCount;
@@ -70,9 +62,6 @@ namespace Caesar
         public List<ECUVariant> ECUVariants = new List<ECUVariant>();
 
         public List<VCDomain> GlobalVCDs = new List<VCDomain>();
-        public List<DiagService> GlobalDiagServices = new List<DiagService>();
-        public List<DiagPresentation> GlobalPresentations = new List<DiagPresentation>();
-        public List<DiagPresentation> GlobalInternalPresentations = new List<DiagPresentation>();
 
         private long BaseAddress;
         [Newtonsoft.Json.JsonIgnore]
@@ -89,10 +78,6 @@ namespace Caesar
         byte[] cachedInternalPresentationsPool = new byte[] { };
         byte[] cachedUnkPool = new byte[] { };
 
-        [Newtonsoft.Json.JsonIgnore]
-        public string? ECUDescription { get { return Language.GetString(EcuDescription_CTF); } }
-
-
         public void Restore(CTFLanguage language, CaesarContainer parentContainer)
         {
             Language = language;
@@ -100,14 +85,6 @@ namespace Caesar
             foreach (VCDomain vc in GlobalVCDs)
             {
                 vc.Restore(language, this);
-            }
-            foreach (DiagPresentation pres in GlobalPresentations)
-            {
-                pres.Restore(language);
-            }
-            foreach (DiagPresentation pres in GlobalInternalPresentations)
-            {
-                pres.Restore(language);
             }
             foreach (ECUInterface iface in ECUInterfaces)
             {
@@ -121,15 +98,6 @@ namespace Caesar
             {
                 variant.Restore(language, this);
             }
-        }
-
-        public byte[] ReadDiagjobPool(BinaryReader reader)
-        {
-            if (cachedDiagjobPool.Length == 0 && DiagJob_BlockOffset != null && DiagJob_EntryCount != null && DiagJob_EntrySize != null)
-            {
-                cachedDiagjobPool = ReadEcuPool(reader, (int)DiagJob_BlockOffset, (int)DiagJob_EntryCount, (int)DiagJob_EntrySize);
-            }
-            return cachedDiagjobPool;
         }
 
         public byte[] ReadVariantPool(BinaryReader reader)
@@ -148,31 +116,6 @@ namespace Caesar
                 cachedVarcodingPool = ReadEcuPool(reader, (int)VcDomain_BlockOffset, (int)VcDomain_EntryCount, (int)VcDomain_EntrySize);
             }
             return cachedVarcodingPool;
-        }
-        // don't actually know what the proper name is, using "ECUInfo" for now
-        public byte[] ReadECUInfoPool(BinaryReader reader)
-        {
-            if (cachedEcuInfoPool.Length == 0 && InternalPresentations_BlockOffset != null && InternalPresentations_EntryCount != null && InternalPresentations_EntrySize != null)
-            {
-                cachedEcuInfoPool = ReadEcuPool(reader, (int)InternalPresentations_BlockOffset, (int)InternalPresentations_EntryCount, (int)InternalPresentations_EntrySize);
-            }
-            return cachedEcuInfoPool;
-        }
-        public byte[] ReadECUPresentationsPool(BinaryReader reader)
-        {
-            if (cachedPresentationsPool.Length == 0 && Presentations_BlockOffset != null && Presentations_EntryCount != null && Presentations_EntrySize != null)
-            {
-                cachedPresentationsPool = ReadEcuPool(reader, (int)Presentations_BlockOffset, (int)Presentations_EntryCount, (int)Presentations_EntrySize);
-            }
-            return cachedPresentationsPool;
-        }
-        public byte[] ReadECUInternalPresentationsPool(BinaryReader reader)
-        {
-            if (cachedInternalPresentationsPool.Length == 0 && InternalPresentations_BlockOffset != null && InternalPresentations_EntryCount != null && InternalPresentations_EntrySize != null)
-            {
-                cachedInternalPresentationsPool = ReadEcuPool(reader, (int)InternalPresentations_BlockOffset, (int)InternalPresentations_EntryCount, (int)InternalPresentations_EntrySize);
-            }
-            return cachedInternalPresentationsPool;
         }
         public byte[] ReadECUUnkPool(BinaryReader reader)
         {
@@ -201,10 +144,11 @@ namespace Caesar
         {
             ParentContainer = parentContainer;
             BaseAddress = baseAddress;
+            Address = (int)BaseAddress;
             Language = language;
             // Read 32+16 bits
-            ulong ecuBitFlags = (ulong)reader.ReadUInt32();
-            ecuBitFlags |= (ulong)reader.ReadUInt16() << 32;
+            Bitflags = reader.ReadUInt32();
+            Bitflags |= (ulong)reader.ReadUInt16() << 32;
 
             // Console.WriteLine($"ECU bitflags: {ecuBitFlags:X}");
 
@@ -212,63 +156,56 @@ namespace Caesar
             int ecuHdrIdk1 = reader.ReadInt32(); // no idea
             // Console.WriteLine($"Skipping: {ecuHdrIdk1:X8}");
 
-            Qualifier = reader.ReadBitflagStringWithReader(ref ecuBitFlags, BaseAddress);
-            EcuName_CTF = reader.ReadBitflagInt32(ref ecuBitFlags);
-            EcuDescription_CTF = reader.ReadBitflagInt32(ref ecuBitFlags);
-            EcuXmlVersion = reader.ReadBitflagStringWithReader(ref ecuBitFlags, BaseAddress);
-            InterfaceBlockCount = reader.ReadBitflagInt32(ref ecuBitFlags);
-            InterfaceTableOffset = reader.ReadBitflagInt32(ref ecuBitFlags);
-            SubinterfacesCount = reader.ReadBitflagInt32(ref ecuBitFlags);
-            SubinterfacesOffset = reader.ReadBitflagInt32(ref ecuBitFlags);
-            EcuClassName = reader.ReadBitflagStringWithReader(ref ecuBitFlags, BaseAddress);
-            UnkStr7 = reader.ReadBitflagStringWithReader(ref ecuBitFlags, BaseAddress);
-            UnkStr8 = reader.ReadBitflagStringWithReader(ref ecuBitFlags, BaseAddress);
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
+            EcuName = reader.ReadBitflagStringRef(ref Bitflags, language);
+            EcuDescription = reader.ReadBitflagStringRef(ref Bitflags, language);
+            EcuXmlVersion = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
+            InterfaceBlockCount = reader.ReadBitflagInt32(ref Bitflags);
+            InterfaceTableOffset = reader.ReadBitflagInt32(ref Bitflags);
+            SubinterfacesCount = reader.ReadBitflagInt32(ref Bitflags);
+            SubinterfacesOffset = reader.ReadBitflagInt32(ref Bitflags);
+            EcuClassName = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
+            UnkStr7 = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
+            UnkStr8 = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
 
             int dataBufferOffsetRelativeToFile = (header.StringPoolSize ?? 0) + StubHeader.StubHeaderSize + header.CffHeaderSize + 4;
             // Console.WriteLine($"{nameof(dataBufferOffsetRelativeToFile)} : 0x{dataBufferOffsetRelativeToFile:X}");
 
-            IgnitionRequired = reader.ReadBitflagInt16(ref ecuBitFlags);
-            Unk2 = reader.ReadBitflagInt16(ref ecuBitFlags);
-            UnkBlockCount = reader.ReadBitflagInt16(ref ecuBitFlags);
-            UnkBlockOffset = reader.ReadBitflagInt32(ref ecuBitFlags);
-            EcuSgmlSource = reader.ReadBitflagInt16(ref ecuBitFlags);
-            Unk6RelativeOffset = reader.ReadBitflagInt32(ref ecuBitFlags);
+            IgnitionRequired = reader.ReadBitflagInt16(ref Bitflags);
+            Unk2 = reader.ReadBitflagInt16(ref Bitflags);
+            UnkBlockCount = reader.ReadBitflagInt16(ref Bitflags);
+            UnkBlockOffset = reader.ReadBitflagInt32(ref Bitflags);
+            EcuSgmlSource = reader.ReadBitflagInt16(ref Bitflags);
+            Unk6RelativeOffset = reader.ReadBitflagInt32(ref Bitflags);
 
-            EcuVariant_BlockOffset = reader.ReadBitflagInt32(ref ecuBitFlags) + dataBufferOffsetRelativeToFile;
-            EcuVariant_EntryCount = reader.ReadBitflagInt32(ref ecuBitFlags);
-            EcuVariant_EntrySize = reader.ReadBitflagInt32(ref ecuBitFlags); // 10
-            EcuVariant_BlockSize = reader.ReadBitflagInt32(ref ecuBitFlags);
+            EcuVariant_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
+            EcuVariant_EntryCount = reader.ReadBitflagInt32(ref Bitflags);
+            EcuVariant_EntrySize = reader.ReadBitflagInt32(ref Bitflags); // 10
+            EcuVariant_BlockSize = reader.ReadBitflagInt32(ref Bitflags);
 
-            DiagJob_BlockOffset = reader.ReadBitflagInt32(ref ecuBitFlags) + dataBufferOffsetRelativeToFile;
-            DiagJob_EntryCount = reader.ReadBitflagInt32(ref ecuBitFlags);
-            DiagJob_EntrySize = reader.ReadBitflagInt32(ref ecuBitFlags); // 14
-            DiagJob_BlockSize = reader.ReadBitflagInt32(ref ecuBitFlags);
+            int tmpAddress = reader.ReadInt32();
 
-            GlobalDTCs = reader.ReadBitflagTable<DTC>(ref ecuBitFlags, dataBufferOffsetRelativeToFile, language, this);
+            GlobalDiagServices = reader.ReadBitflagTable<DiagService>(this, language, this);
 
-            GlobalEnvironmentContexts = reader.ReadBitflagTable<DiagService>(ref ecuBitFlags, dataBufferOffsetRelativeToFile, language, this);
+            GlobalDTCs = reader.ReadBitflagTable<DTC>(this, language, this);
 
-            VcDomain_BlockOffset = reader.ReadBitflagInt32(ref ecuBitFlags) + dataBufferOffsetRelativeToFile;
-            VcDomain_EntryCount = reader.ReadBitflagInt32(ref ecuBitFlags);
-            VcDomain_EntrySize = reader.ReadBitflagInt32(ref ecuBitFlags); // 12
-            VcDomain_BlockSize = reader.ReadBitflagInt32(ref ecuBitFlags);
+            GlobalEnvironmentContexts = reader.ReadBitflagTable<DiagService>(this, language, this);
 
-            Presentations_BlockOffset = reader.ReadBitflagInt32(ref ecuBitFlags) + dataBufferOffsetRelativeToFile;
-            Presentations_EntryCount = reader.ReadBitflagInt32(ref ecuBitFlags);
-            Presentations_EntrySize = reader.ReadBitflagInt32(ref ecuBitFlags); // 8
-            Presentations_BlockSize = reader.ReadBitflagInt32(ref ecuBitFlags);
+            VcDomain_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
+            VcDomain_EntryCount = reader.ReadBitflagInt32(ref Bitflags);
+            VcDomain_EntrySize = reader.ReadBitflagInt32(ref Bitflags); // 12
+            VcDomain_BlockSize = reader.ReadBitflagInt32(ref Bitflags);
 
-            InternalPresentations_BlockOffset = reader.ReadBitflagInt32(ref ecuBitFlags) + dataBufferOffsetRelativeToFile;
-            InternalPresentations_EntryCount = reader.ReadBitflagInt32(ref ecuBitFlags);
-            InternalPresentations_EntrySize = reader.ReadBitflagInt32(ref ecuBitFlags); // 8
-            InternalPresentations_BlockSize = reader.ReadBitflagInt32(ref ecuBitFlags);
+            GlobalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, language, this);
 
-            Unk_BlockOffset = reader.ReadBitflagInt32(ref ecuBitFlags) + dataBufferOffsetRelativeToFile;
-            Unk_EntryCount = reader.ReadBitflagInt32(ref ecuBitFlags);
-            Unk_EntrySize = reader.ReadBitflagInt32(ref ecuBitFlags);
-            Unk_BlockSize = reader.ReadBitflagInt32(ref ecuBitFlags);
+            GlobalInternalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, language, this);
 
-            Unk39 = reader.ReadBitflagInt32(ref ecuBitFlags);
+            Unk_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
+            Unk_EntryCount = reader.ReadBitflagInt32(ref Bitflags);
+            Unk_EntrySize = reader.ReadBitflagInt32(ref Bitflags);
+            Unk_BlockSize = reader.ReadBitflagInt32(ref Bitflags);
+
+            Unk39 = reader.ReadBitflagInt32(ref Bitflags);
 
             // read ecu's supported interfaces and subtypes
 
@@ -316,45 +253,12 @@ namespace Caesar
                 }
             }
             // dependency of variants
-            CreatePresentations(reader, language);
-            CreateInternalPresentations(reader, language);
             // requires presentations
-            CreateDiagServices(reader, language);
             // dtc has xrefs to envs
             CreateVCDomains(reader, language);
 
             CreateEcuVariants(reader, language);
             //PrintDebug();
-        }
-
-        public void CreateDiagServices(CaesarReader reader, CTFLanguage language)
-        {
-            if (DiagJob_EntryCount != null && DiagJob_BlockOffset != null)
-            {
-                byte[] diagjobPool = ReadDiagjobPool(reader);
-                // arrays since list has become too expensive
-                DiagService[] globalDiagServices = new DiagService[(int)DiagJob_EntryCount];
-
-
-                using (CaesarReader poolReader = new CaesarReader(new MemoryStream(diagjobPool)))
-                {
-                    for (int diagjobIndex = 0; diagjobIndex < DiagJob_EntryCount; diagjobIndex++)
-                    {
-                        int offset = poolReader.ReadInt32();
-                        int size = poolReader.ReadInt32();
-                        uint crc = poolReader.ReadUInt32();
-                        uint config = poolReader.ReadUInt16();
-                        long diagjobBaseAddress = offset + (long)DiagJob_BlockOffset;
-                        // Console.WriteLine($"DJ @ {offset:X} with size {size:X}");
-
-                        DiagService dj = new DiagService(reader, language, diagjobBaseAddress, diagjobIndex, this);
-                        // GlobalDiagServices.Add(dj);
-                        globalDiagServices[diagjobIndex] = dj;
-                    }
-                }
-
-                GlobalDiagServices = new List<DiagService>(globalDiagServices);
-            }
         }
 
         public void CreateVCDomains(CaesarReader reader, CTFLanguage language)
@@ -389,56 +293,6 @@ namespace Caesar
         //        }
         //    }
         //}
-        public void CreatePresentations(CaesarReader reader, CTFLanguage language)
-        {
-            if (Presentations_BlockOffset != null && Presentations_EntryCount != null)
-            {
-                byte[] presentationsPool = ReadECUPresentationsPool(reader);
-                // arrays since list has become too expensive
-                // DiagService[] globalDiagServices = new DiagService[DiagJob_EntryCount];
-                DiagPresentation[] globalPresentations = new DiagPresentation[(int)Presentations_EntryCount];
-
-                using (CaesarReader poolReader = new CaesarReader(new MemoryStream(presentationsPool)))
-                {
-                    for (int presentationsIndex = 0; presentationsIndex < Presentations_EntryCount; presentationsIndex++)
-                    {
-
-                        int offset = poolReader.ReadInt32();
-                        int size = poolReader.ReadInt32();
-
-                        long presentationsBaseAddress = offset + (long)Presentations_BlockOffset;
-                        // string offsetLog = $"Pres @ 0x{offset:X} with size 0x{size:X} base 0x{presentationsBaseAddress:X}";
-
-                        DiagPresentation pres = new DiagPresentation(reader, presentationsBaseAddress, presentationsIndex, language);
-                        globalPresentations[presentationsIndex] = pres;
-                    }
-                    // Console.WriteLine($"Entry count/size for presentations : {Presentations_EntryCount}, {Presentations_EntrySize}");
-                }
-                GlobalPresentations = new List<DiagPresentation>(globalPresentations);
-            }
-        }
-        public void CreateInternalPresentations(CaesarReader reader, CTFLanguage language)
-        {
-            if (InternalPresentations_EntryCount != null && InternalPresentations_BlockOffset != null)
-            {
-                byte[] internalPresentationsPool = ReadECUInternalPresentationsPool(reader);
-                DiagPresentation[] globalInternalPresentations = new DiagPresentation[(int)InternalPresentations_EntryCount];
-
-                using (BinaryReader poolReader = new BinaryReader(new MemoryStream(internalPresentationsPool)))
-                {
-                    for (int internalPresentationsIndex = 0; internalPresentationsIndex < InternalPresentations_EntryCount; internalPresentationsIndex++)
-                    {
-                        int offset = poolReader.ReadInt32();
-                        int size = poolReader.ReadInt32();
-
-                        long internalPresentationsBaseAddress = offset + (long)InternalPresentations_BlockOffset;
-                        DiagPresentation pres = new DiagPresentation(reader, internalPresentationsBaseAddress, internalPresentationsIndex, language);
-                        globalInternalPresentations[internalPresentationsIndex] = pres;
-                    }
-                }
-                GlobalInternalPresentations = new List<DiagPresentation>(globalInternalPresentations);
-            }
-        }
         public void CreateEcuVariants(CaesarReader reader, CTFLanguage language)
         {
             ECUVariants.Clear();
@@ -477,8 +331,8 @@ namespace Caesar
         public override string ToString()
         {
             return $"ECU: Name={Qualifier}, " +
-                $"{nameof(EcuName_CTF)}={EcuName_CTF}, " +
-                $"{nameof(EcuDescription_CTF)}={EcuDescription_CTF}, " +
+                $"{nameof(EcuName)}={EcuName}, " +
+                $"{nameof(EcuDescription)}={EcuDescription}, " +
                 $"ecuXmlVersion={EcuXmlVersion}, " +
                 $"{nameof(InterfaceBlockCount)}={InterfaceBlockCount}, " +
                 $"{nameof(InterfaceTableOffset)}=0x{InterfaceTableOffset:X}, " +
@@ -498,10 +352,7 @@ namespace Caesar
                 $"{nameof(EcuVariant_EntryCount)}={EcuVariant_EntryCount}, " +
                 $"{nameof(EcuVariant_EntrySize)}={EcuVariant_EntrySize}, " +
                 $"{nameof(EcuVariant_BlockSize)}=0x{EcuVariant_BlockSize:X}, " +
-                $"{nameof(DiagJob_BlockOffset)}=0x{DiagJob_BlockOffset:X}, " +
-                $"{nameof(DiagJob_EntryCount)}={DiagJob_EntryCount}, " +
-                $"{nameof(DiagJob_EntrySize)}={DiagJob_EntrySize}, " +
-                $"{nameof(DiagJob_BlockSize)}=0x{DiagJob_BlockSize:X}, " +
+                $"{nameof(GlobalDiagServices)}={GlobalDiagServices}, " +
                 $"{nameof(GlobalDTCs)}={GlobalDTCs}, " +
                 $"{nameof(GlobalEnvironmentContexts)}={GlobalEnvironmentContexts}, " +
 
@@ -512,19 +363,18 @@ namespace Caesar
                 $"{nameof(VcDomain_EntryCount)}={VcDomain_EntryCount}, " +
                 $"{nameof(VcDomain_EntrySize)}={VcDomain_EntrySize}, " +
                 $"{nameof(VcDomain_BlockSize)}=0x{VcDomain_BlockSize:X}, " +
-                $"{nameof(Presentations_BlockOffset)}=0x{Presentations_BlockOffset:X}, " +
-                $"{nameof(Presentations_EntryCount)}={Presentations_EntryCount}, " +
-                $"{nameof(Presentations_EntrySize)}={Presentations_EntrySize}, " +
-                $"{nameof(Presentations_BlockSize)}=0x{Presentations_BlockSize:X}, " +
-                $"{nameof(InternalPresentations_BlockOffset)}=0x{InternalPresentations_BlockOffset:X}, " +
-                $"{nameof(InternalPresentations_EntryCount)}={InternalPresentations_EntryCount}, " +
-                $"{nameof(InternalPresentations_EntrySize)}={InternalPresentations_EntrySize}, " +
-                $"{nameof(InternalPresentations_BlockSize)}=0x{InternalPresentations_BlockSize:X}, " +
+                $"{nameof(GlobalPresentations)}={GlobalPresentations}, " +
+                $"{nameof(GlobalInternalPresentations)}={GlobalInternalPresentations}, " +
                 $"{nameof(Unk_BlockOffset)}=0x{Unk_BlockOffset:X}, " +
                 $"{nameof(Unk_EntryCount)}={Unk_EntryCount}, " +
                 $"{nameof(Unk_EntrySize)}={Unk_EntrySize}, " +
                 $"{nameof(Unk_BlockSize)}={Unk_BlockSize}, " +
                 $"{nameof(Unk39)}={Unk39}";
+        }
+
+        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        {
+            throw new NotImplementedException();
         }
     }
 }

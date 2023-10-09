@@ -7,12 +7,11 @@ using System.IO;
 
 namespace Caesar
 {
-    public class DiagPresentation
+    public class DiagPresentation : CaesarObject
     {
         public string? Qualifier;
         public CaesarStringReference? Description;
-        public int? ScaleTableOffset;
-        public int? ScaleCountMaybe;
+        public CaesarTable<Scale>? Scales;
         public int? Unk5;
         public int? NumberChoices;
         public int? Unk7;
@@ -48,17 +47,12 @@ namespace Caesar
         public int? Unk24;
         public int? Unk25;
         public int? Unk26;
-        // public string DescriptionString;
-        // public string DisplayedUnitString;
-        // public string DescriptionString2;
 
-        private long BaseAddress;
         public int PresentationIndex;
 
         [Newtonsoft.Json.JsonIgnore]
         public CTFLanguage Language;
 
-        public List<Scale>? Scales;
 
         public void Restore(CTFLanguage language) 
         {
@@ -72,87 +66,6 @@ namespace Caesar
 
         // 0x05 [6,   4,4,4,4,  4,4,4,4,  4,4,4,4,  2,2,2,4,      4,4,4,4,   4,4,4,4,   4,4,1,1,  1,1,1,4,     4,4,2,4,   4,4],
 
-        public DiagPresentation(CaesarReader reader, long baseAddress, int presentationsIndex, CTFLanguage language) 
-        {
-            BaseAddress = baseAddress;
-            PresentationIndex = presentationsIndex;
-            Language = language;
-
-            reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
-            ulong bitflags = reader.ReadUInt32();
-            
-            ulong extendedBitflags = reader.ReadUInt16(); // skip 2 bytes
-
-            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, BaseAddress);
-
-            Description = reader.ReadBitflagStringRef(ref bitflags, language);
-
-            ScaleTableOffset = reader.ReadBitflagInt32(ref bitflags);
-            ScaleCountMaybe = reader.ReadBitflagInt32(ref bitflags);
-            Unk5 = reader.ReadBitflagInt32(ref bitflags);
-            NumberChoices = reader.ReadBitflagInt32(ref bitflags);
-            Unk7 = reader.ReadBitflagInt32(ref bitflags);
-            Unk8 = reader.ReadBitflagInt32(ref bitflags);
-
-            Unk9 = reader.ReadBitflagInt32(ref bitflags);
-            UnkA = reader.ReadBitflagInt32(ref bitflags);
-            UnkB = reader.ReadBitflagInt32(ref bitflags);
-            UnkC = reader.ReadBitflagInt32(ref bitflags);
-
-            UnkD = reader.ReadBitflagInt16(ref bitflags);
-            UnkE = reader.ReadBitflagInt16(ref bitflags);
-            UnkF = reader.ReadBitflagInt16(ref bitflags);
-            DisplayedUnit = reader.ReadBitflagStringRef(ref bitflags, language);
-
-            Unk11 = reader.ReadBitflagInt32(ref bitflags);
-            Unk12 = reader.ReadBitflagInt32(ref bitflags);
-            EnumMaxValue = reader.ReadBitflagInt32(ref bitflags);
-            Unk14 = reader.ReadBitflagInt32(ref bitflags);
-
-            Unk15 = reader.ReadBitflagInt32(ref bitflags);
-            Description2 = reader.ReadBitflagStringRef(ref bitflags, language);
-            Unk17 = reader.ReadBitflagInt32(ref bitflags);
-            Unk18 = reader.ReadBitflagInt32(ref bitflags);
-
-            Unk19 = reader.ReadBitflagInt32(ref bitflags);
-            TypeLength_1A = reader.ReadBitflagInt32(ref bitflags);
-            InternalDataType = reader.ReadBitflagInt8(ref bitflags);
-            Type_1C = reader.ReadBitflagInt8(ref bitflags);
-
-            Unk1d = reader.ReadBitflagInt8(ref bitflags);
-            SignBit = reader.ReadBitflagInt8(ref bitflags);
-            ByteOrder = reader.ReadBitflagInt8(ref bitflags);
-            Unk20 = reader.ReadBitflagInt32(ref bitflags);
-
-            bitflags = extendedBitflags;
-
-            TypeLengthBytesMaybe_21 = reader.ReadBitflagInt32(ref bitflags);
-            Unk22 = reader.ReadBitflagInt32(ref bitflags);
-            Unk23 = reader.ReadBitflagInt16(ref bitflags);
-            Unk24 = reader.ReadBitflagInt32(ref bitflags);
-
-            Unk25 = reader.ReadBitflagInt32(ref bitflags);
-            Unk26 = reader.ReadBitflagInt32(ref bitflags);
-
-
-            if(ScaleTableOffset != null)
-            {
-                long scaleTableBase = BaseAddress + (long)ScaleTableOffset;
-                Scales = new List<Scale>();
-                for (int i = 0; i < ScaleCountMaybe; i++)
-                {
-                    reader.BaseStream.Seek(scaleTableBase + (i * 4), SeekOrigin.Begin);
-                    int entryRelativeOffset = reader.ReadInt32();
-
-                    Scale scale = new Scale(reader, scaleTableBase + entryRelativeOffset, language);
-                    Scales.Add(scale);
-                }
-            }
-            else
-            {
-                Scales = null;
-            }
-        }
 
         public string InterpretData(byte[] inBytes, DiagPreparation inPreparation, bool describe = true)
         {
@@ -170,7 +83,7 @@ namespace Caesar
                 workingBytes = inBytes.Skip(inPreparation.BitPosition / 8).Take((int)TypeLength_1A).ToArray();
             }
 
-            bool isEnumType = (SignBit == 0) && ((Type_1C == 1) || (ScaleCountMaybe > 1));
+            bool isEnumType = (SignBit == 0) && ((Type_1C == 1) || (Scales != null && Scales.Count > 1));
 
             // hack: sometimes hybrid types (regularly parsed as an scaled value if within bounds) are misinterpreted as pure enums
             // this is a temporary fix for kilometerstand until there's a better way to ascertain its type
@@ -184,7 +97,7 @@ namespace Caesar
             {
                 return $"InBytes [{BitUtility.BytesToHex(workingBytes)}] length mismatch (expecting {TypeLength_1A})";
             }
-
+            List<Scale> scalesList = Scales != null ? Scales.GetObjects() : new List<Scale>();
             // handle booleans first since they're the edge case where they can cross byte boundaries
             if (inPreparation.SizeInBits == 1)
             {
@@ -193,9 +106,9 @@ namespace Caesar
                 byte selectedByte = inBytes[bytesToSkip];
 
                 int selectedBit = (selectedByte >> bitsToSkip) & 1;
-                if (isEnumType && Scales != null && Scales != null && Scales.Count > selectedBit)
+                if (isEnumType && scalesList.Count > selectedBit)
                 {
-                    return $"{descriptionPrefix}{Scales[selectedBit].EnumDescription?.Text} {DisplayedUnit?.Text}";
+                    return $"{descriptionPrefix}{scalesList[selectedBit].EnumDescription?.Text} {DisplayedUnit?.Text}";
                 }
                 else 
                 {
@@ -225,7 +138,7 @@ namespace Caesar
                 humanReadableType = "IntegerType";
 
                 parsedValue = rawIntInterpretation.ToString();
-                if (dataType == 20 && Scales != null && Scales.Count > 0)
+                if (dataType == 20 && scalesList.Count > 0)
                 {
                     humanReadableType = "ScaledType";
 
@@ -235,10 +148,11 @@ namespace Caesar
                     // if there's more than one, use the first scale as an interim solution;
                     // the results of stacking scales does not make sense
                     // there might be a better, non-hardcoded (0) solution to this, and perhaps with a sig-fig specifier
-                    if (Scales[0].MultiplyFactor != null && Scales[0].AddConstOffset != null)
+                    var singleScale = scalesList[0];
+                    if (singleScale.MultiplyFactor != null && singleScale.AddConstOffset != null)
                     {
-                        valueToScale *= (double)Scales[0].MultiplyFactor;
-                        valueToScale += (double)Scales[0].AddConstOffset;
+                        valueToScale *= (double)singleScale.MultiplyFactor;
+                        valueToScale += (double)singleScale.AddConstOffset;
                     }
 
                     parsedValue = valueToScale.ToString("0.000000");
@@ -285,7 +199,7 @@ namespace Caesar
                 // if an enum is specified, the inclusive upper bound and lower bound will be defined in the scale object
 
                 bool useNewInterpretation = false;
-                foreach (Scale scale in Scales)
+                foreach (Scale scale in scalesList)
                 {
                     if ((scale.EnumUpBound > 0) || (scale.EnumLowBound > 0))
                     {
@@ -296,7 +210,7 @@ namespace Caesar
 
                 if (useNewInterpretation)
                 {
-                    foreach (Scale scale in Scales)
+                    foreach (Scale scale in scalesList)
                     {
                         if ((rawIntInterpretation >= scale.EnumLowBound) && (rawIntInterpretation <= scale.EnumUpBound))
                         {
@@ -307,9 +221,9 @@ namespace Caesar
                 else 
                 {
                     // original implementation, probably incorrect
-                    if (rawIntInterpretation < Scales.Count)
+                    if (rawIntInterpretation < scalesList.Count)
                     {
-                        return $"{descriptionPrefix}{Scales[rawIntInterpretation].EnumDescription?.Text} {DisplayedUnit?.Text}";
+                        return $"{descriptionPrefix}{scalesList[rawIntInterpretation].EnumDescription?.Text} {DisplayedUnit?.Text}";
                     }
                 }
                 return $"{descriptionPrefix}(Enum not found) {DisplayedUnit?.Text}";
@@ -350,7 +264,7 @@ namespace Caesar
 
             // does the value have scale structures attached to it? 
             // supposed to parse scale struct and check if we can return 20
-            if (ScaleTableOffset != -1)
+            if (Scales != null)
             {
                 return 20; // scaled value
             }
@@ -421,8 +335,7 @@ namespace Caesar
 
 
             //Console.WriteLine($"{nameof(Description_CTF)}: {Description_CTF}");
-            Console.WriteLine($"{nameof(ScaleTableOffset)}: {ScaleTableOffset}");
-            Console.WriteLine($"{nameof(ScaleCountMaybe)}: {ScaleCountMaybe}");
+            Console.WriteLine($"{nameof(Scales)}: {Scales}");
 
             Console.WriteLine($"{nameof(Unk5)}: {Unk5}");
             Console.WriteLine($"{nameof(NumberChoices)}: {NumberChoices}");
@@ -473,16 +386,8 @@ namespace Caesar
             Console.WriteLine($"Type: {GetDataType()}");
             Console.WriteLine($"{nameof(Type_1C)}: {Type_1C}");
             Console.WriteLine($"{nameof(TypeLength_1A)}: {TypeLength_1A}");
-            Console.WriteLine($"ScaleOffset: 0x{(ScaleTableOffset + BaseAddress):X}, base of pres @ 0x{BaseAddress:X}");
+            Console.WriteLine($"Scales: {Scales}");
 
-            if (Scales != null)
-            {
-                foreach (Scale s in Scales)
-                {
-                    Console.WriteLine("Scale: ");
-                    s.PrintDebug();
-                }
-            }
             Console.WriteLine("Presentation end");
         }
 
@@ -520,19 +425,73 @@ namespace Caesar
             sb.Append($" {nameof(Unk24)}: {Unk24}");
             sb.Append($" {nameof(Unk25)}: {Unk25}");
             sb.Append($" {nameof(Unk26)}: {Unk26}");
-            sb.Append($" {nameof(BaseAddress)}: 0x{BaseAddress:X8}");
+            sb.Append($" {nameof(Address)}: 0x{Address:X8}");
             sb.Append($" {nameof(Type_1C)}: {Type_1C}");
             sb.Append($" {nameof(TypeLength_1A)}: {TypeLength_1A}");
             sb.Append($" Type: {GetDataType()}");
-            sb.Append($" {nameof(ScaleTableOffset)}: {ScaleTableOffset}");
-            sb.Append($" {nameof(Qualifier)}: {Qualifier}"); sb.Append($" {nameof(ScaleCountMaybe)}: {ScaleCountMaybe}");
-            if (ScaleCountMaybe > 0 && Scales != null)
-            {
-                sb.Append($" {Scales[0].EnumDescription?.Text}");
-            }
+            sb.Append($" {nameof(Scales)}: {Scales}");
+            sb.Append($" {nameof(Qualifier)}: {Qualifier}"); 
             return sb.ToString();
         }
 
+        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        {
+            if(ParentObject == null)
+            {
+                return;
+            }
+            Bitflags = reader.ReadUInt32();
 
+            Bitflags |= (ulong)reader.ReadUInt16() << 32;
+
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, Address + ParentObject.Address);
+
+            Description = reader.ReadBitflagStringRef(ref Bitflags, language);
+
+            Scales = reader.ReadBitflagSubTable<Scale>(this, language);
+
+            Unk5 = reader.ReadBitflagInt32(ref Bitflags);
+            NumberChoices = reader.ReadBitflagInt32(ref Bitflags);
+            Unk7 = reader.ReadBitflagInt32(ref Bitflags);
+            Unk8 = reader.ReadBitflagInt32(ref Bitflags);
+
+            Unk9 = reader.ReadBitflagInt32(ref Bitflags);
+            UnkA = reader.ReadBitflagInt32(ref Bitflags);
+            UnkB = reader.ReadBitflagInt32(ref Bitflags);
+            UnkC = reader.ReadBitflagInt32(ref Bitflags);
+
+            UnkD = reader.ReadBitflagInt16(ref Bitflags);
+            UnkE = reader.ReadBitflagInt16(ref Bitflags);
+            UnkF = reader.ReadBitflagInt16(ref Bitflags);
+            DisplayedUnit = reader.ReadBitflagStringRef(ref Bitflags, language);
+
+            Unk11 = reader.ReadBitflagInt32(ref Bitflags);
+            Unk12 = reader.ReadBitflagInt32(ref Bitflags);
+            EnumMaxValue = reader.ReadBitflagInt32(ref Bitflags);
+            Unk14 = reader.ReadBitflagInt32(ref Bitflags);
+
+            Unk15 = reader.ReadBitflagInt32(ref Bitflags);
+            Description2 = reader.ReadBitflagStringRef(ref Bitflags, language);
+            Unk17 = reader.ReadBitflagInt32(ref Bitflags);
+            Unk18 = reader.ReadBitflagInt32(ref Bitflags);
+
+            Unk19 = reader.ReadBitflagInt32(ref Bitflags);
+            TypeLength_1A = reader.ReadBitflagInt32(ref Bitflags);
+            InternalDataType = reader.ReadBitflagInt8(ref Bitflags);
+            Type_1C = reader.ReadBitflagInt8(ref Bitflags);
+
+            Unk1d = reader.ReadBitflagInt8(ref Bitflags);
+            SignBit = reader.ReadBitflagInt8(ref Bitflags);
+            ByteOrder = reader.ReadBitflagInt8(ref Bitflags);
+            Unk20 = reader.ReadBitflagInt32(ref Bitflags);
+
+            TypeLengthBytesMaybe_21 = reader.ReadBitflagInt32(ref Bitflags);
+            Unk22 = reader.ReadBitflagInt32(ref Bitflags);
+            Unk23 = reader.ReadBitflagInt16(ref Bitflags);
+            Unk24 = reader.ReadBitflagInt32(ref Bitflags);
+
+            Unk25 = reader.ReadBitflagInt32(ref Bitflags);
+            Unk26 = reader.ReadBitflagInt32(ref Bitflags);
+        }
     }
 }

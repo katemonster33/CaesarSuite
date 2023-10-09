@@ -11,8 +11,8 @@ namespace Caesar
     {
 
         public string? Qualifier;
-        public int? Name_CTF;
-        public int? Description_CTF;
+        public CaesarStringReference? Name;
+        public CaesarStringReference? Description;
         public string? ReadServiceName;
         public string? WriteServiceName;
         private int? FragmentCount;
@@ -70,8 +70,8 @@ namespace Caesar
             ulong bitflags = reader.ReadUInt16();
 
             Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
-            Name_CTF = reader.ReadBitflagInt32(ref bitflags);
-            Description_CTF = reader.ReadBitflagInt32(ref bitflags);
+            Name = reader.ReadBitflagStringRef(ref bitflags, language);
+            Description = reader.ReadBitflagStringRef(ref bitflags, language);
             ReadServiceName = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
             WriteServiceName = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
             FragmentCount = reader.ReadBitflagInt32(ref bitflags);
@@ -171,8 +171,8 @@ namespace Caesar
         {
 
             Console.WriteLine($"VCD Name: {Qualifier}");
-            Console.WriteLine($"{nameof(Name_CTF)} : {Name_CTF}");
-            Console.WriteLine($"{nameof(Description_CTF)} : {Description_CTF}");
+            Console.WriteLine($"{nameof(Name)} : {Name}");
+            Console.WriteLine($"{nameof(Description)} : {Description}");
             Console.WriteLine($"{nameof(ReadServiceName)} : {ReadServiceName}");
             Console.WriteLine($"{nameof(WriteServiceName)} : {WriteServiceName}");
 

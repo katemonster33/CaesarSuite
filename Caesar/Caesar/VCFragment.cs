@@ -12,8 +12,8 @@ namespace Caesar
         public int ByteBitPos;
         public ushort ImplementationType;
 
-        public int? Name_CTF;
-        public int? Description_CTF;
+        public CaesarStringReference? Name;
+        public CaesarStringReference? Description;
         public int? ReadAccessLevel;
         public int? WriteAccessLevel;
         public int? ByteOrder;
@@ -79,8 +79,8 @@ namespace Caesar
             ulong fragmentBitflags = reader.ReadUInt32();
             // Console.WriteLine($"Fragment new bitflag @ 0x{fragmentBitflags:X}");
 
-            Name_CTF = reader.ReadBitflagInt32(ref fragmentBitflags);
-            Description_CTF = reader.ReadBitflagInt32(ref fragmentBitflags);
+            Name = reader.ReadBitflagStringRef(ref fragmentBitflags, language);
+            Description = reader.ReadBitflagStringRef(ref fragmentBitflags, language);
             ReadAccessLevel = reader.ReadBitflagUInt8(ref fragmentBitflags);
             WriteAccessLevel = reader.ReadBitflagUInt8(ref fragmentBitflags);
             ByteOrder = reader.ReadBitflagUInt16(ref fragmentBitflags);
@@ -177,47 +177,40 @@ namespace Caesar
                 throw new NotImplementedException("The disassembly throws an exception when fragmentImplementationLower > 6, copying verbatim");
             }
 
-            if (ImplementationUpper > 0x420 && InfoPoolIndex != null)
+            if (ImplementationUpper > 0x420 && InfoPoolIndex != null && ParentECU.GlobalInternalPresentations != null)
             {
                 // Console.WriteLine($"fragment value upper: {fragmentImplementationUpper:X}");
-                ECU ecu = ParentDomain.ParentECU;
-                byte[] infoPool = ecu.ReadECUInfoPool(reader);
-                // int infoEntryWidth = ecu.ecuInfoPool_tableEntrySize;
-                // Console.WriteLine($"Info entry width: {infoEntryWidth}"); // 8
 
-                using (BinaryReader poolReader = new BinaryReader(new MemoryStream(infoPool)))
+                DiagPresentation pres = ParentECU.GlobalInternalPresentations.GetObjects()[(int)InfoPoolIndex];
+                /*
+                // depreciate use of ReadCBFWithOffset
+                poolReader.BaseStream.Seek(ecu.Info_EntrySize * InfoPoolIndex, SeekOrigin.Begin);
+                int presentationStructOffset = poolReader.ReadInt32();
+                int presentationStructSize = poolReader.ReadInt32();
+
+                //Console.WriteLine($"struct offset: 0x{presentationStructOffset:X} , size: {presentationStructSize} , meaningA 0x{fragmentMeaningA_Presentation:X} infoBase 0x{ecu.ecuInfoPool_fileoffset_7:X}\n");
+
+                reader.BaseStream.Seek(presentationStructOffset + ecu.Info_BlockOffset, SeekOrigin.Begin);
+                byte[] presentationStruct = reader.ReadBytes(presentationStructSize);
+
+                int presentationMode = CaesarStructure.ReadCBFWithOffset(0x1C, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_Type
+                int presentationLength = CaesarStructure.ReadCBFWithOffset(0x1A, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_TypeLength
+                if (presentationLength > 0)
                 {
-                    DiagPresentation pres = ParentECU.GlobalInternalPresentations[(int)InfoPoolIndex];
-                    /*
-                    // depreciate use of ReadCBFWithOffset
-                    poolReader.BaseStream.Seek(ecu.Info_EntrySize * InfoPoolIndex, SeekOrigin.Begin);
-                    int presentationStructOffset = poolReader.ReadInt32();
-                    int presentationStructSize = poolReader.ReadInt32();
-
-                    //Console.WriteLine($"struct offset: 0x{presentationStructOffset:X} , size: {presentationStructSize} , meaningA 0x{fragmentMeaningA_Presentation:X} infoBase 0x{ecu.ecuInfoPool_fileoffset_7:X}\n");
-
-                    reader.BaseStream.Seek(presentationStructOffset + ecu.Info_BlockOffset, SeekOrigin.Begin);
-                    byte[] presentationStruct = reader.ReadBytes(presentationStructSize);
-
-                    int presentationMode = CaesarStructure.ReadCBFWithOffset(0x1C, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_Type
-                    int presentationLength = CaesarStructure.ReadCBFWithOffset(0x1A, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_TypeLength
-                    if (presentationLength > 0)
+                    BitLength = presentationLength;
+                }
+                else 
+                {
+                    BitLength = CaesarStructure.ReadCBFWithOffset(0x21, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // ???
+                }
+                */
+                if (pres.TypeLength_1A != null && pres.TypeLengthBytesMaybe_21 != null && pres.Type_1C != null)
+                {
+                    BitLength = (int)(pres.TypeLength_1A > 0 ? pres.TypeLength_1A : pres.TypeLengthBytesMaybe_21);
+                    // if value was specified in bytes, convert to bits
+                    if (pres.Type_1C == 0)
                     {
-                        BitLength = presentationLength;
-                    }
-                    else 
-                    {
-                        BitLength = CaesarStructure.ReadCBFWithOffset(0x21, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // ???
-                    }
-                    */
-                    if (pres.TypeLength_1A != null && pres.TypeLengthBytesMaybe_21 != null && pres.Type_1C != null)
-                    {
-                        BitLength = (int)(pres.TypeLength_1A > 0 ? pres.TypeLength_1A : pres.TypeLengthBytesMaybe_21);
-                        // if value was specified in bytes, convert to bits
-                        if (pres.Type_1C == 0)
-                        {
-                            BitLength *= 8;
-                        }
+                        BitLength *= 8;
                     }
                 }
             }
@@ -263,8 +256,8 @@ namespace Caesar
                 Console.WriteLine($"{nameof(ImplementationType)} : {ImplementationType}");
                 Console.WriteLine($"{nameof(ImplementationUpper)} : 0x{ImplementationUpper:X}");
 
-                Console.WriteLine($"{nameof(Name_CTF)} : {Name_CTF}");
-                Console.WriteLine($"{nameof(Description_CTF)} : {Description_CTF}");
+                Console.WriteLine($"{nameof(Name)} : {Name}");
+                Console.WriteLine($"{nameof(Description)} : {Description}");
                 Console.WriteLine($"{nameof(ReadAccessLevel)} : {ReadAccessLevel}");
                 Console.WriteLine($"{nameof(WriteAccessLevel)} : {WriteAccessLevel}");
                 Console.WriteLine($"{nameof(ByteOrder)} : {ByteOrder}");

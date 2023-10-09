@@ -20,7 +20,7 @@ namespace Caesar
             TestIncompleteAtCurrentCycle = 0x40,
             WarningIndicatorActive = 0x80,
         }
-
+        public int DataSize;
         public int CRC;
 
         // see : const char *__cdecl DIGetComfortErrorCode(DI_ECUINFO *ecuh, unsigned int dtcIndex)
@@ -32,12 +32,8 @@ namespace Caesar
         public int? XrefStart = -1;
         public int? XrefCount = -1;
 
-        private long BaseAddress;
-
-        public DTC() 
+        public DTC()
         {
-            PoolIndex = -1;
-            BaseAddress = -1;
             CRC = -1;
         }
 
@@ -58,12 +54,12 @@ namespace Caesar
             return $"DTC: {Qualifier}: {Description} : {Reference}";
         }
 
-        protected override void ReadHeader(CaesarReader reader, int baseOffset)
+        protected override bool ReadHeader(CaesarReader reader)
         {
-            HeaderSize = 12;
-            base.ReadHeader(reader, baseOffset);
-
+            Address = reader.ReadInt32();
+            DataSize = reader.ReadInt32();
             CRC = reader.ReadInt32();
+            return true;
         }
 
         protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)

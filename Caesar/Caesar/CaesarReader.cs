@@ -37,7 +37,7 @@ namespace Caesar
                 long readerPosition = BaseStream.Position;
                 // seek to the specified offset, then read out the string
                 BaseStream.Seek(stringOffset + virtualBase, SeekOrigin.Begin);
-                string result = ReadString();
+                string result = ReadString(Encoding.UTF8);
                 // restore our reading cursor
                 BaseStream.Seek(readerPosition, SeekOrigin.Begin);
                 return result;
@@ -139,32 +139,24 @@ namespace Caesar
             return null;
         }
 
-        public CaesarTable<C> ReadBitflagTable<C>(ref ulong bitFlags, int baseOffset, CTFLanguage language, bool fixedSize, ECU? currentEcu = null) where C : CaesarObject, new()
+        public CaesarTable<C>? ReadBitflagSubTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
         {
-            int? blockOffset = ReadBitflagInt32(ref bitFlags) + baseOffset;
-            int? entryCount = ReadBitflagInt32(ref bitFlags);
-            int? entrySize = null; 
-            int? blockSize = null;
-            if(fixedSize)
+            var output = new CaesarTable<C>();
+            if(output.Read(this, parentObject, language, currentEcu))
             {
-                entrySize = ReadBitflagInt32(ref bitFlags);
-                blockSize = ReadBitflagInt32(ref bitFlags);
-            }
-            if (blockOffset != null && entryCount != null)
-            {
-                if (blockSize == null)
-                {
-                    blockSize = entrySize;
-                }
-                var output = new CaesarTable<C>((int)blockOffset, (int)entryCount, entrySize, blockSize);
-                output.Populate(this, language, currentEcu);
                 return output;
             }
-            else
-            {
-                return null;
-            }
+            return null;
+        }
 
+        public CaesarTable<C>? ReadBitflagTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
+        {
+            var output = new CaesarTable<C>();
+            if (output.Read(this, parentObject, language, currentEcu))
+            {
+                return output;
+            }
+            return null;
         }
 
         public CaesarStringReference? ReadBitflagStringRef(ref ulong bitFlags, CTFLanguage language)

@@ -36,40 +36,41 @@ namespace Caesar
         {
             return $"{nameof(EnumLowBound)}={EnumLowBound}, " +
                 $"{nameof(EnumUpBound)}={EnumUpBound}, " +
-            $"{nameof(PrepLowBound)}={PrepLowBound}, " +
-            $"{nameof(PrepUpBound)}={PrepUpBound}, " +
+                $"{nameof(PrepLowBound)}={PrepLowBound}, " +
+                $"{nameof(PrepUpBound)}={PrepUpBound}, " +
 
-            $"{nameof(MultiplyFactor)}={MultiplyFactor}, " +
-            $"{nameof(AddConstOffset)}={AddConstOffset}, " +
-            $"{nameof(SICount)}={SICount}, " +
-            $"{nameof(OffsetSI)}={OffsetSI}, " +
+                $"{nameof(MultiplyFactor)}={MultiplyFactor}, " +
+                $"{nameof(AddConstOffset)}={AddConstOffset}, " +
+                $"{nameof(SICount)}={SICount}, " +
+                $"{nameof(OffsetSI)}={OffsetSI}, " +
 
-            $"{nameof(USCount)}={USCount}, " +
-            $"{nameof(OffsetUS)}={OffsetUS}, " +
-            $"{nameof(EnumDescription)}={EnumDescription}, " +
-            $"{nameof(UnkC)}={UnkC}, ";
+                $"{nameof(USCount)}={USCount}, " +
+                $"{nameof(OffsetUS)}={OffsetUS}, " +
+                $"{nameof(EnumDescription)}={EnumDescription}, " +
+                $"{nameof(UnkC)}={UnkC}, ";
         }
+
         protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
         {
-            ulong bitflags = reader.ReadUInt16();
+            Bitflags = reader.ReadUInt16();
 
-            EnumLowBound = reader.ReadBitflagInt32(ref bitflags);
-            EnumUpBound = reader.ReadBitflagInt32(ref bitflags);
+            EnumLowBound = reader.ReadBitflagInt32(ref Bitflags);
+            EnumUpBound = reader.ReadBitflagInt32(ref Bitflags);
 
-            PrepLowBound = reader.ReadBitflagInt32(ref bitflags); // could be float
-            PrepUpBound = reader.ReadBitflagInt32(ref bitflags); // could be float
+            PrepLowBound = reader.ReadBitflagInt32(ref Bitflags); // could be float
+            PrepUpBound = reader.ReadBitflagInt32(ref Bitflags); // could be float
 
-            MultiplyFactor = reader.ReadBitflagFloat(ref bitflags);
-            AddConstOffset = reader.ReadBitflagFloat(ref bitflags);
+            MultiplyFactor = reader.ReadBitflagFloat(ref Bitflags);
+            AddConstOffset = reader.ReadBitflagFloat(ref Bitflags);
 
-            SICount = reader.ReadBitflagInt32(ref bitflags);
-            OffsetSI = reader.ReadBitflagInt32(ref bitflags);
+            SICount = reader.ReadBitflagInt32(ref Bitflags);
+            OffsetSI = reader.ReadBitflagInt32(ref Bitflags);
 
-            USCount = reader.ReadBitflagInt32(ref bitflags);
-            OffsetUS = reader.ReadBitflagInt32(ref bitflags);
+            USCount = reader.ReadBitflagInt32(ref Bitflags);
+            OffsetUS = reader.ReadBitflagInt32(ref Bitflags);
 
-            EnumDescription = reader.ReadBitflagStringRef(ref bitflags, language);
-            UnkC = reader.ReadBitflagInt32(ref bitflags);
+            EnumDescription = reader.ReadBitflagStringRef(ref Bitflags, language);
+            UnkC = reader.ReadBitflagInt32(ref Bitflags);
         }
     }
 }

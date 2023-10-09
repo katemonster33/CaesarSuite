@@ -15,7 +15,7 @@ namespace Caesar
         public string? UnkStr1;
         public string? UnkStr2;
         public int? Unk1;
-        
+
         private int? MatchingPatternCount; // A
         private int? MatchingPatternOffset;
         private int? SubsectionB_Count; // B
@@ -64,7 +64,7 @@ namespace Caesar
         [Newtonsoft.Json.JsonIgnore]
         private CTFLanguage Language;
 
-        public void Restore(CTFLanguage language, ECU parentEcu) 
+        public void Restore(CTFLanguage language, ECU parentEcu)
         {
             Language = language;
             ParentECU = parentEcu;
@@ -84,7 +84,7 @@ namespace Caesar
             // CreateComParameters(reader, parentEcu); // already serialized in json
         }
 
-        public ECUVariant() 
+        public ECUVariant()
         {
             ParentECU = new ECU();
             Language = new CTFLanguage();
@@ -256,7 +256,7 @@ namespace Caesar
             }
         }
 
-        public void CreateVariantPatterns(CaesarReader reader) 
+        public void CreateVariantPatterns(CaesarReader reader)
         {
             if (MatchingPatternOffset != null && MatchingPatternCount != null)
             {
@@ -347,35 +347,44 @@ namespace Caesar
             */
             // optimization hack
             int poolSize = DiagServicesPoolOffsets.Count;
-            for (int i = 0; i < poolSize; i++) 
+            if (parentEcu.GlobalDiagServices != null)
             {
-                if (i == DiagServicesPoolOffsets[i])
+                List<DiagService> diagServices = parentEcu.GlobalDiagServices.GetObjects();
+                for (int i = 0; i < poolSize; i++)
                 {
-                    DiagServices[i] = parentEcu.GlobalDiagServices[i];
-                }
-            }
-            DiagServicesPoolOffsets.Sort();
-            int lowestIndex = 0;
-            int loopMax = parentEcu.GlobalDiagServices.Count;
-            for (int i = 0; i < poolSize; i++)
-            {
-                if (DiagServices[i] != null) 
-                {
-                    continue;
-                }
-                for (int globalIndex = lowestIndex; globalIndex < loopMax; globalIndex++)
-                {
-                    if (parentEcu.GlobalDiagServices[globalIndex].PoolIndex == DiagServicesPoolOffsets[i])
+                    if (i == DiagServicesPoolOffsets[i])
                     {
-                        DiagServices[i] = parentEcu.GlobalDiagServices[globalIndex];
-                        lowestIndex = globalIndex;
-                        break;
+                        DiagServices[i] = diagServices[i];
+                    }
+                }
+                DiagServicesPoolOffsets.Sort();
+                int lowestIndex = 0;
+                int loopMax = parentEcu.GlobalDiagServices.Count;
+                for (int i = 0; i < poolSize; i++)
+                {
+                    if (DiagServices[i] != null)
+                    {
+                        continue;
+                    }
+                    for (int globalIndex = lowestIndex; globalIndex < loopMax; globalIndex++)
+                    {
+                        if (diagServices[globalIndex].PoolIndex == DiagServicesPoolOffsets[i])
+                        {
+                            DiagServices[i] = diagServices[globalIndex];
+                            lowestIndex = globalIndex;
+                            break;
+                        }
                     }
                 }
             }
         }
+
         private void CreateDTCs(ECU parentEcu, CTFLanguage language)
         {
+            if(parentEcu.GlobalDTCs == null)
+            {
+                return;
+            }
             int dtcPoolSize = DTCsPoolOffsetsWithBounds.Count;
             DTCs = new DTC[dtcPoolSize];
             List<DTC> globalDtcsCopy = parentEcu.GlobalDTCs.GetObjects();
@@ -390,7 +399,7 @@ namespace Caesar
             }
             DTCsPoolOffsetsWithBounds.Sort((x, y) => x.Item1.CompareTo(y.Item1));
             int lowestIndex = 0;
-            int loopMax = ParentECU.GlobalDTCs.Count;
+            int loopMax = globalDtcsCopy.Count;
             for (int i = 0; i < dtcPoolSize; i++) 
             {
                 if (DTCs[i] != null)

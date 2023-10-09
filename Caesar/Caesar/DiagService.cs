@@ -38,6 +38,8 @@ namespace Caesar
             VariantCodingRead = 27,
         }
 
+        public int DataSize { get; set; }
+
         public string? Qualifier;
 
         public CaesarStringReference? Name;
@@ -114,24 +116,21 @@ namespace Caesar
             ParentECU = new ECU();
         }
 
-        public DiagService(CaesarReader reader, CTFLanguage language, long baseAddress, int poolIndex, ECU parentEcu) 
-        {
-
-        }
-
         public long GetCALInt16Offset(CaesarReader reader) 
         {
-            reader.BaseStream.Seek(Address, SeekOrigin.Begin);
+            if (ParentObject == null) return 0;
 
-            ulong bitflags = reader.ReadUInt32();
-            ulong bitflagExtended = reader.ReadUInt32();
+            reader.BaseStream.Seek(Address + ParentObject.Address, SeekOrigin.Begin);
 
-            reader.ReadBitflagStringWithReader(ref bitflags, Address); // Qualifier
-            reader.ReadBitflagInt32(ref bitflags); // Name
-            reader.ReadBitflagInt32(ref bitflags); // Description
-            reader.ReadBitflagUInt16(ref bitflags); // Type
-            reader.ReadBitflagUInt16(ref bitflags); // IsExecutable 
-            if (reader.CheckAndAdvanceBitflag(ref bitflags))
+            Bitflags = reader.ReadUInt32();
+            Bitflags |= (ulong)reader.ReadUInt32() << 32;
+
+            reader.ReadBitflagStringWithReader(ref Bitflags, Address); // Qualifier
+            reader.ReadBitflagInt32(ref Bitflags); // Name
+            reader.ReadBitflagInt32(ref Bitflags); // Description
+            reader.ReadBitflagUInt16(ref Bitflags); // Type
+            reader.ReadBitflagUInt16(ref Bitflags); // IsExecutable 
+            if (reader.CheckAndAdvanceBitflag(ref Bitflags))
             {
                 return reader.BaseStream.Position;
             }
@@ -147,6 +146,16 @@ namespace Caesar
             Console.WriteLine($"{Qualifier} - ReqBytes: {RequestBytes_Count}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, ComParams: {T_ComParam_Count}, Preparation: {U_prep_Count}, V: {V_Count}, OutPres: {W_OutPres_Count}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodeCount}, field50: {Field50}");
             Console.WriteLine($"BaseAddress @ 0x{Address:X}, NR: {NegativeResponseName}");
             Console.WriteLine($"V @ 0x{Address + V_Offset:X}, count: {V_Count}");
+        }
+
+        protected override bool ReadHeader(CaesarReader reader)
+        {
+            Address = reader.ReadInt32();
+            DataSize = reader.ReadInt32();
+            uint crc = reader.ReadUInt32();
+            uint config = reader.ReadUInt16();
+
+            return true;
         }
 
         protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)

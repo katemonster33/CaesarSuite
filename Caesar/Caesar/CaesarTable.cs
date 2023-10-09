@@ -8,11 +8,9 @@ using System.Threading.Tasks;
 
 namespace Caesar
 {
-    public class CaesarTable<T>
+    public class CaesarTable<T> : CaesarObject
         where T : CaesarObject, new()
     {
-        public int BlockOffset { get; set; }
-
         public int EntryCount { get; set; }
 
         public int? EntrySize { get; set; }
@@ -47,41 +45,42 @@ namespace Caesar
                 {
                     output.Add(Objects[i + index]);
                 }
-                return output;
             }
             return output;
         }
 
-        public void Populate(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override bool ReadHeader(CaesarReader reader)
+        {
+            if(ParentObject == null) return false;
+
+            bool baseSuccess = base.ReadHeader(reader);
+
+            int? entryCount = reader.ReadBitflagInt32(ref ParentObject.Bitflags);
+            EntryCount = entryCount ?? 0;
+
+            EntrySize = reader.ReadBitflagInt32(ref ParentObject.Bitflags);
+
+            BlockSize = reader.ReadBitflagInt32(ref ParentObject.Bitflags);
+
+            return baseSuccess && entryCount != null;
+        }
+
+        protected override void ReadData(CaesarReader reader,  CTFLanguage language, ECU? currentEcu)
         {
             Objects.Clear();
-            long originalOffset = reader.BaseStream.Position;
-            reader.BaseStream.Seek((long)BlockOffset, System.IO.SeekOrigin.Begin);
-            int offset = BlockOffset;
-            for (int index = 0; index < EntryCount; index++, offset += BlockSize)
+            for (int index = 0; index < EntryCount; index++)
             {
                 T obj = new T();
                 obj.PoolIndex = index;
-                obj.Read(reader, BlockOffset, language, currentEcu);
+                obj.Read(reader, this, language, currentEcu);
                 Objects.Add(obj);
             }
-            reader.BaseStream.Seek(originalOffset, System.IO.SeekOrigin.Begin);
         }
 
         public CaesarTable()
         {
-            BlockOffset = 0;
+            Address = 0;
             EntryCount = 0;
-            EntrySize = 0;
-            BlockSize = 0;
-        }
-
-        public CaesarTable(int blockOffset, int entryCount, int? entrySize, int? blockSize)
-        {
-            BlockOffset = blockOffset;
-            EntryCount = entryCount;
-            EntrySize = entrySize;
-            BlockSize = blockSize;
         }
     }
 }

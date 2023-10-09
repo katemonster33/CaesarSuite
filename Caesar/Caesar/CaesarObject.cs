@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,35 +10,41 @@ namespace Caesar
 {
     public abstract class CaesarObject
     {
+        [JsonIgnore]
+        protected CaesarObject? ParentObject { get; set; }
+
         public int Address { get; set; }
-
-        public int HeaderSize { get; set; }
-
-        public int DataSize { get; set; }
 
         public int PoolIndex { get; set; } = -1;
 
-        protected virtual void ReadHeader(CaesarReader reader, int baseOffset)
+        internal ulong Bitflags = 0;
+
+        protected virtual bool ReadHeader(CaesarReader reader)
         {
-            if(HeaderSize == 0)
-            {
-                HeaderSize = 8;
-            }
-            Address = reader.ReadInt32() + baseOffset;
-            DataSize = reader.ReadInt32();
+            if(ParentObject == null) return false;
+
+            int? address = reader.ReadBitflagInt32(ref ParentObject.Bitflags);
+
+            Address = address ?? 0;
+
+            return address != null;
         }
 
-        public void Read(CaesarReader reader, int baseOffset, CTFLanguage language, ECU? currentEcu)
+        public bool Read(CaesarReader reader, CaesarObject parentObject, CTFLanguage language, ECU? currentEcu)
         {
-            long nextHeaderOffset = reader.BaseStream.Position;
-            ReadHeader(reader, baseOffset);
-            nextHeaderOffset += HeaderSize; // HeaderSize is guaranteed to be set after first call to ReadHeader
-            if(Address != 0 && DataSize > 0)
+            ParentObject = parentObject;
+            if(!ReadHeader(reader))
             {
-                reader.BaseStream.Seek(Address, SeekOrigin.Begin);
+                return false;
+            }
+            if(Address != 0)
+            {
+                long nextHeaderOffset = reader.BaseStream.Position;
+                reader.BaseStream.Seek(Address + parentObject.Address, SeekOrigin.Begin);
                 ReadData(reader, language, currentEcu);
                 reader.BaseStream.Seek(nextHeaderOffset, SeekOrigin.Begin);
             }
+            return true;
         }
 
         protected abstract void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu);
