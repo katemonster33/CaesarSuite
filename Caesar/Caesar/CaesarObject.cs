@@ -13,7 +13,12 @@ namespace Caesar
         [JsonIgnore]
         protected CaesarObject? ParentObject { get; set; }
 
-        public int Address { get; set; }
+        // object's address relative to the last parent CaesarObject, this is what we read
+        public int RelativeAddress { get; set; }
+
+        // actual offset in the file to be read from
+        [JsonIgnore]
+        public int AbsoluteAddress { get; protected set; }
 
         public int PoolIndex { get; set; } = -1;
 
@@ -25,7 +30,7 @@ namespace Caesar
 
             int? address = reader.ReadBitflagInt32(ref ParentObject.Bitflags);
 
-            Address = address ?? 0;
+            RelativeAddress = address ?? 0;
 
             return address != null;
         }
@@ -37,10 +42,11 @@ namespace Caesar
             {
                 return false;
             }
-            if(Address != 0)
+            if(RelativeAddress != 0)
             {
+                AbsoluteAddress = parentObject.AbsoluteAddress + RelativeAddress;
                 long nextHeaderOffset = reader.BaseStream.Position;
-                reader.BaseStream.Seek(Address + parentObject.Address, SeekOrigin.Begin);
+                reader.BaseStream.Seek(AbsoluteAddress, SeekOrigin.Begin);
                 ReadData(reader, language, currentEcu);
                 reader.BaseStream.Seek(nextHeaderOffset, SeekOrigin.Begin);
             }

@@ -79,7 +79,7 @@ namespace Caesar
 
         public CaesarTable()
         {
-            Address = 0;
+            RelativeAddress = 0;
             EntryCount = 0;
         }
     }

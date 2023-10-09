@@ -56,7 +56,7 @@ namespace Caesar
 
         protected override bool ReadHeader(CaesarReader reader)
         {
-            Address = reader.ReadInt32();
+            RelativeAddress = reader.ReadInt32();
             DataSize = reader.ReadInt32();
             CRC = reader.ReadInt32();
             return true;
@@ -66,7 +66,7 @@ namespace Caesar
         {
             ulong bitflags = reader.ReadUInt16();
 
-            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, Address);
+            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, AbsoluteAddress);
 
             Description = reader.ReadBitflagStringRef(ref bitflags, language);
             Reference = reader.ReadBitflagStringRef(ref bitflags, language);

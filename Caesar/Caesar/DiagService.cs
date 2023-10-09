@@ -120,12 +120,12 @@ namespace Caesar
         {
             if (ParentObject == null) return 0;
 
-            reader.BaseStream.Seek(Address + ParentObject.Address, SeekOrigin.Begin);
+            reader.BaseStream.Seek(AbsoluteAddress + ParentObject.AbsoluteAddress, SeekOrigin.Begin);
 
             Bitflags = reader.ReadUInt32();
             Bitflags |= (ulong)reader.ReadUInt32() << 32;
 
-            reader.ReadBitflagStringWithReader(ref Bitflags, Address); // Qualifier
+            reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress); // Qualifier
             reader.ReadBitflagInt32(ref Bitflags); // Name
             reader.ReadBitflagInt32(ref Bitflags); // Description
             reader.ReadBitflagUInt16(ref Bitflags); // Type
@@ -144,13 +144,13 @@ namespace Caesar
         public void PrintDebug() 
         {
             Console.WriteLine($"{Qualifier} - ReqBytes: {RequestBytes_Count}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, ComParams: {T_ComParam_Count}, Preparation: {U_prep_Count}, V: {V_Count}, OutPres: {W_OutPres_Count}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodeCount}, field50: {Field50}");
-            Console.WriteLine($"BaseAddress @ 0x{Address:X}, NR: {NegativeResponseName}");
-            Console.WriteLine($"V @ 0x{Address + V_Offset:X}, count: {V_Count}");
+            Console.WriteLine($"BaseAddress @ 0x{AbsoluteAddress:X}, NR: {NegativeResponseName}");
+            Console.WriteLine($"V @ 0x{AbsoluteAddress + V_Offset:X}, count: {V_Count}");
         }
 
         protected override bool ReadHeader(CaesarReader reader)
         {
-            Address = reader.ReadInt32();
+            RelativeAddress = reader.ReadInt32();
             DataSize = reader.ReadInt32();
             uint crc = reader.ReadUInt32();
             uint config = reader.ReadUInt16();
@@ -163,9 +163,9 @@ namespace Caesar
             ParentECU = currentEcu ?? new ECU();
 
             ulong bitflags = reader.ReadUInt32();
-            ulong bitflagExtended = reader.ReadUInt32();
+            ulong bitflagExtended = (ulong)reader.ReadUInt32() << 32;
 
-            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, Address);
+            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, AbsoluteAddress);
 
             Name = reader.ReadBitflagStringRef(ref bitflags, language);
             Description = reader.ReadBitflagStringRef(ref bitflags, language);
@@ -186,7 +186,7 @@ namespace Caesar
             R_Count = reader.ReadBitflagInt32(ref bitflags);
             R_Offset = reader.ReadBitflagInt32(ref bitflags);
 
-            InputRefNameMaybe = reader.ReadBitflagStringWithReader(ref bitflags, Address);
+            InputRefNameMaybe = reader.ReadBitflagStringWithReader(ref bitflags, AbsoluteAddress);
 
             U_prep_Count = reader.ReadBitflagInt32(ref bitflags);
             U_prep_Offset = reader.ReadBitflagInt32(ref bitflags);
@@ -203,9 +203,9 @@ namespace Caesar
 
             Field50 = reader.ReadBitflagUInt16(ref bitflags);
 
-            NegativeResponseName = reader.ReadBitflagStringWithReader(ref bitflags, Address); // negative response name
-            UnkStr3 = reader.ReadBitflagStringWithReader(ref bitflags, Address);
-            UnkStr4 = reader.ReadBitflagStringWithReader(ref bitflags, Address);
+            NegativeResponseName = reader.ReadBitflagStringWithReader(ref bitflags, AbsoluteAddress); // negative response name
+            UnkStr3 = reader.ReadBitflagStringWithReader(ref bitflags, AbsoluteAddress);
+            UnkStr4 = reader.ReadBitflagStringWithReader(ref bitflags, AbsoluteAddress);
 
             P_Count = reader.ReadBitflagInt32(ref bitflags);
             P_Offset = reader.ReadBitflagInt32(ref bitflags);
@@ -229,7 +229,7 @@ namespace Caesar
 
             if (RequestBytes_Count != null && RequestBytes_Offset != null && RequestBytes_Count > 0)
             {
-                reader.BaseStream.Seek(Address + (long)RequestBytes_Offset, SeekOrigin.Begin);
+                reader.BaseStream.Seek(AbsoluteAddress + (long)RequestBytes_Offset, SeekOrigin.Begin);
                 RequestBytes = reader.ReadBytes((int)RequestBytes_Count);
             }
             else
@@ -243,7 +243,7 @@ namespace Caesar
             {
                 for (int prepIndex = 0; prepIndex < U_prep_Count; prepIndex++)
                 {
-                    long presentationTableOffset = Address + (long)U_prep_Offset;
+                    long presentationTableOffset = AbsoluteAddress + (long)U_prep_Offset;
                     reader.BaseStream.Seek(presentationTableOffset + (prepIndex * 10), SeekOrigin.Begin);
 
                     // DIOpenDiagService (reads 4, 4, 2 then calls DiagServiceReadPresentation) to build a presentation
@@ -260,7 +260,7 @@ namespace Caesar
             OutputPreparations = new List<List<DiagPreparation>>();
             if (W_OutPres_Offset != null && W_OutPres_Count != null)
             {
-                long outPresBaseAddress = Address + (long)W_OutPres_Offset;
+                long outPresBaseAddress = AbsoluteAddress + (long)W_OutPres_Offset;
 
                 // FIXME: run it through the entire dbr cbf directory, check if any file actually has more than 1 item in ResultPresentationSet
                 for (int presIndex = 0; presIndex < W_OutPres_Count; presIndex++)
@@ -290,7 +290,7 @@ namespace Caesar
             DiagComParameters = new List<ComParameter>();
             if (T_ComParam_Offset != null && T_ComParam_Count != null)
             {
-                long comParamTableBaseAddress = Address + (long)T_ComParam_Offset;
+                long comParamTableBaseAddress = AbsoluteAddress + (long)T_ComParam_Offset;
                 for (int cpIndex = 0; cpIndex < T_ComParam_Count; cpIndex++)
                 {
                     reader.BaseStream.Seek(comParamTableBaseAddress + (cpIndex * 4), SeekOrigin.Begin);
@@ -332,7 +332,7 @@ namespace Caesar
             byte[] dscPool = ParentECU.ParentContainer.CaesarCFFHeader.DSCPool;
             if (DiagServiceCodeOffset != null && DiagServiceCodeCount != null)
             {
-                long dscTableBaseAddress = Address + (long)DiagServiceCodeOffset;
+                long dscTableBaseAddress = AbsoluteAddress + (long)DiagServiceCodeOffset;
 
                 using (BinaryReader dscPoolReader = new BinaryReader(new MemoryStream(dscPool)))
                 {

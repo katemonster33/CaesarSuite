@@ -144,7 +144,8 @@ namespace Caesar
         {
             ParentContainer = parentContainer;
             BaseAddress = baseAddress;
-            Address = (int)BaseAddress;
+            RelativeAddress = (int)BaseAddress;
+            AbsoluteAddress = (int)RelativeAddress;
             Language = language;
             // Read 32+16 bits
             Bitflags = reader.ReadUInt32();
@@ -182,8 +183,6 @@ namespace Caesar
             EcuVariant_EntryCount = reader.ReadBitflagInt32(ref Bitflags);
             EcuVariant_EntrySize = reader.ReadBitflagInt32(ref Bitflags); // 10
             EcuVariant_BlockSize = reader.ReadBitflagInt32(ref Bitflags);
-
-            int tmpAddress = reader.ReadInt32();
 
             GlobalDiagServices = reader.ReadBitflagTable<DiagService>(this, language, this);
 

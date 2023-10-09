@@ -425,7 +425,7 @@ namespace Caesar
             sb.Append($" {nameof(Unk24)}: {Unk24}");
             sb.Append($" {nameof(Unk25)}: {Unk25}");
             sb.Append($" {nameof(Unk26)}: {Unk26}");
-            sb.Append($" {nameof(Address)}: 0x{Address:X8}");
+            sb.Append($" {nameof(AbsoluteAddress)}: 0x{AbsoluteAddress:X8}");
             sb.Append($" {nameof(Type_1C)}: {Type_1C}");
             sb.Append($" {nameof(TypeLength_1A)}: {TypeLength_1A}");
             sb.Append($" Type: {GetDataType()}");
@@ -444,7 +444,7 @@ namespace Caesar
 
             Bitflags |= (ulong)reader.ReadUInt16() << 32;
 
-            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, Address + ParentObject.Address);
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress + ParentObject.AbsoluteAddress);
 
             Description = reader.ReadBitflagStringRef(ref Bitflags, language);
 
