@@ -1,21 +1,19 @@
-﻿using System;
-using System.Collections;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Caesar
 {
-    public class CaesarTable<T> : CaesarObject
-        where T : CaesarObject, new()
+    /// <summary>
+    /// Here I define a 'basic' table in Caesar as a table referenced only by offset and entry count.
+    /// </summary>
+    public class CaesarBasicTable<T> : CaesarObject
+        where T : CaesarObject, new ()
     {
         public int EntryCount { get; set; }
-
-        public int? EntrySize { get; set; }
-
-        public int? BlockSize { get; set; }
 
         protected List<T> Objects { get; set; } = new List<T>();
 
@@ -51,21 +49,18 @@ namespace Caesar
 
         protected override bool ReadHeader(CaesarReader reader)
         {
-            if(ParentObject == null) return false;
+            if (ParentObject == null) return false;
 
-            bool baseSuccess = base.ReadHeader(reader);
+            int? blockOffset = reader.ReadBitflagInt32(ref ParentObject.Bitflags);
+            RelativeAddress = blockOffset ?? 0;
 
             int? entryCount = reader.ReadBitflagInt32(ref ParentObject.Bitflags);
             EntryCount = entryCount ?? 0;
 
-            EntrySize = reader.ReadBitflagInt32(ref ParentObject.Bitflags);
-
-            BlockSize = reader.ReadBitflagInt32(ref ParentObject.Bitflags);
-
-            return baseSuccess && entryCount != null;
+            return blockOffset != null && entryCount != null;
         }
 
-        protected override void ReadData(CaesarReader reader,  CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
         {
             Objects.Clear();
             for (int index = 0; index < EntryCount; index++)
@@ -77,7 +72,7 @@ namespace Caesar
             }
         }
 
-        public CaesarTable()
+        public CaesarBasicTable()
         {
             RelativeAddress = 0;
             EntryCount = 0;

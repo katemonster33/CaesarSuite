@@ -55,7 +55,7 @@ namespace Caesar
         [Newtonsoft.Json.JsonIgnore]
         public DTC[] DTCs = new DTC[] { };
         [Newtonsoft.Json.JsonIgnore]
-        public DiagService[] EnvironmentContexts = new DiagService[] { };
+        public EnvironmentContext[] EnvironmentContexts = new EnvironmentContext[] { };
 
         public long BaseAddress;
         [Newtonsoft.Json.JsonIgnore]
@@ -237,7 +237,7 @@ namespace Caesar
 
             foreach (long comparamOffset in comparameterOffsets)
             {
-                ComParameter param = new ComParameter(reader, comparamOffset, parentEcu.ECUInterfaces, Language);
+                ComParameter param = new ComParameter(reader, comparamOffset, parentEcu, Language);
 
                 if (param.ParentInterfaceIndex != null && param.SubinterfaceIndex != null)
                 {
@@ -451,8 +451,8 @@ namespace Caesar
         private void CreateEnvironmentContexts(ECU parentEcu, CTFLanguage language)
         {
             int envPoolSize = EnvironmentContextsPoolOffsets.Count;
-            EnvironmentContexts = new DiagService[envPoolSize];
-            List<DiagService> globalEnvCache = parentEcu.GlobalEnvironmentContexts.GetObjects();
+            EnvironmentContexts = new EnvironmentContext[envPoolSize];
+            List<EnvironmentContext> globalEnvCache = parentEcu.GlobalEnvironmentContexts.GetObjects();
             for (int i = 0; i < envPoolSize; i++)
             {
                 if (i == EnvironmentContextsPoolOffsets[i])

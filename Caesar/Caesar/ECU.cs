@@ -35,20 +35,20 @@ namespace Caesar
         private int? EcuVariant_EntrySize;
         private int? EcuVariant_BlockSize;
 
-        public CaesarTable<DiagService>? GlobalDiagServices;
+        public CaesarLargeTable<DiagService>? GlobalDiagServices;
 
-        public CaesarTable<DTC>? GlobalDTCs;
+        public CaesarLargeTable<DTC>? GlobalDTCs;
 
-        public CaesarTable<DiagService>? GlobalEnvironmentContexts;
+        public CaesarLargeTable<EnvironmentContext>? GlobalEnvironmentContexts;
 
         private int? VcDomain_BlockOffset; // 5 , 0x15716
         private int? VcDomain_EntryCount; // [1], 43 0x2B
         private int? VcDomain_EntrySize; // [2], 12 0xC (multiply with [1] for size), 43*12=516 = 0x204
         private int? VcDomain_BlockSize; // [3] unused
 
-        public CaesarTable<DiagPresentation>? GlobalPresentations;
+        public CaesarLargeTable<DiagPresentation>? GlobalPresentations;
 
-        public CaesarTable<DiagPresentation>? GlobalInternalPresentations;
+        public CaesarLargeTable<DiagPresentation>? GlobalInternalPresentations;
 
         private int? Unk_BlockOffset;
         private int? Unk_EntryCount;
@@ -134,8 +134,8 @@ namespace Caesar
 
         public ECU()
         {
-            GlobalDTCs = new CaesarTable<DTC>();
-            GlobalEnvironmentContexts = new CaesarTable<DiagService>();
+            GlobalDTCs = new CaesarLargeTable<DTC>();
+            GlobalEnvironmentContexts = new CaesarLargeTable<EnvironmentContext>();
             Language = new CTFLanguage();
             ParentContainer = new CaesarContainer();
         }
@@ -145,7 +145,6 @@ namespace Caesar
             ParentContainer = parentContainer;
             BaseAddress = baseAddress;
             RelativeAddress = (int)BaseAddress;
-            AbsoluteAddress = (int)RelativeAddress;
             Language = language;
             // Read 32+16 bits
             Bitflags = reader.ReadUInt32();
@@ -169,7 +168,6 @@ namespace Caesar
             UnkStr7 = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
             UnkStr8 = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
 
-            int dataBufferOffsetRelativeToFile = (header.StringPoolSize ?? 0) + StubHeader.StubHeaderSize + header.CffHeaderSize + 4;
             // Console.WriteLine($"{nameof(dataBufferOffsetRelativeToFile)} : 0x{dataBufferOffsetRelativeToFile:X}");
 
             IgnitionRequired = reader.ReadBitflagInt16(ref Bitflags);
@@ -178,6 +176,9 @@ namespace Caesar
             UnkBlockOffset = reader.ReadBitflagInt32(ref Bitflags);
             EcuSgmlSource = reader.ReadBitflagInt16(ref Bitflags);
             Unk6RelativeOffset = reader.ReadBitflagInt32(ref Bitflags);
+
+            int dataBufferOffsetRelativeToFile = (header.StringPoolSize ?? 0) + StubHeader.StubHeaderSize + header.CffHeaderSize + 4;
+            AbsoluteAddress = (int)dataBufferOffsetRelativeToFile;
 
             EcuVariant_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
             EcuVariant_EntryCount = reader.ReadBitflagInt32(ref Bitflags);
@@ -188,7 +189,7 @@ namespace Caesar
 
             GlobalDTCs = reader.ReadBitflagTable<DTC>(this, language, this);
 
-            GlobalEnvironmentContexts = reader.ReadBitflagTable<DiagService>(this, language, this);
+            GlobalEnvironmentContexts = reader.ReadBitflagTable<EnvironmentContext>(this, language, this);
 
             VcDomain_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
             VcDomain_EntryCount = reader.ReadBitflagInt32(ref Bitflags);

@@ -10,7 +10,7 @@ namespace Caesar
     public class DiagPreparation
     {
         public string? Qualifier;
-        public int? Name_CTF;
+        public CaesarStringReference? Name;
         public int? Unk1;
         public int? Unk2;
         public int? AlternativeBitWidth;
@@ -82,7 +82,7 @@ namespace Caesar
 
 
             Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
-            Name_CTF = reader.ReadBitflagInt32(ref bitflags);
+            Name = reader.ReadBitflagStringRef(ref bitflags, language);
             Unk1 = reader.ReadBitflagUInt8(ref bitflags);
             Unk2 = reader.ReadBitflagUInt8(ref bitflags);
             AlternativeBitWidth = reader.ReadBitflagInt32(ref bitflags);
@@ -100,7 +100,7 @@ namespace Caesar
             }
             Dump = reader.ReadBitflagDumpWithReader(ref bitflags, DumpSize, baseAddress);
 
-            SizeInBits = GetSizeInBits(reader);
+            //SizeInBits = GetSizeInBits(reader);
             // PrintDebug();
         }
 
@@ -370,8 +370,7 @@ namespace Caesar
             Console.WriteLine($"{nameof(ModeConfig)} : 0x{ModeConfig:X}");
             Console.WriteLine($"Mode H : 0x{ModeConfig & 0xFF0:X}, L : 0x{ModeConfig & 0xF:X}");
             Console.WriteLine($"{nameof(SizeInBits)} : 0x{SizeInBits:X}");
-            Console.WriteLine($"{nameof(Name_CTF)} : {Name_CTF}");
-            Console.WriteLine($"{nameof(Name_CTF)} : {Language.GetString(Name_CTF)}");
+            Console.WriteLine($"{nameof(Name)} : {Name}");
             Console.WriteLine($"{nameof(Unk1)} : {Unk1}");
             Console.WriteLine($"{nameof(Unk2)} : {Unk2}");
             Console.WriteLine($"{nameof(AlternativeBitWidth)} : {AlternativeBitWidth}");

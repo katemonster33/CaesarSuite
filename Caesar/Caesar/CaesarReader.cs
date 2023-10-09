@@ -139,9 +139,9 @@ namespace Caesar
             return null;
         }
 
-        public CaesarTable<C>? ReadBitflagSubTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
+        public CaesarBasicTable<C>? ReadBitflagSubTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
         {
-            var output = new CaesarTable<C>();
+            var output = new CaesarBasicTable<C>();
             if(output.Read(this, parentObject, language, currentEcu))
             {
                 return output;
@@ -149,9 +149,9 @@ namespace Caesar
             return null;
         }
 
-        public CaesarTable<C>? ReadBitflagTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
+        public CaesarLargeTable<C>? ReadBitflagTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
         {
-            var output = new CaesarTable<C>();
+            var output = new CaesarLargeTable<C>();
             if (output.Read(this, parentObject, language, currentEcu))
             {
                 return output;

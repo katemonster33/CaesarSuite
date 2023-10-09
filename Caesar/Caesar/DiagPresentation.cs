@@ -11,7 +11,7 @@ namespace Caesar
     {
         public string? Qualifier;
         public CaesarStringReference? Description;
-        public CaesarTable<Scale>? Scales;
+        public CaesarBasicTable<Scale>? Scales;
         public int? Unk5;
         public int? NumberChoices;
         public int? Unk7;
@@ -434,6 +434,13 @@ namespace Caesar
             return sb.ToString();
         }
 
+        protected override bool ReadHeader(CaesarReader reader)
+        {
+            RelativeAddress = reader.ReadInt32();
+            int dataSize = reader.ReadInt32();
+            return true;
+        }
+
         protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
         {
             if(ParentObject == null)
@@ -444,7 +451,7 @@ namespace Caesar
 
             Bitflags |= (ulong)reader.ReadUInt16() << 32;
 
-            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress + ParentObject.AbsoluteAddress);
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
 
             Description = reader.ReadBitflagStringRef(ref Bitflags, language);
 

@@ -26,13 +26,8 @@ namespace Caesar
 
         protected virtual bool ReadHeader(CaesarReader reader)
         {
-            if(ParentObject == null) return false;
-
-            int? address = reader.ReadBitflagInt32(ref ParentObject.Bitflags);
-
-            RelativeAddress = address ?? 0;
-
-            return address != null;
+            RelativeAddress = reader.ReadInt32();
+            return true;
         }
 
         public bool Read(CaesarReader reader, CaesarObject parentObject, CTFLanguage language, ECU? currentEcu)

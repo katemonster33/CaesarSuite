@@ -108,7 +108,7 @@ namespace Caesar
 
         public ComParameter? GetComParameterByName(string paramName) 
         {
-            return CommunicationParameters.Find(x => x.ParamName == paramName);
+            return CommunicationParameters.Find(x => x.ComParamName == paramName);
         }
 
         public int? GetComParameterValue(ParamName name)
