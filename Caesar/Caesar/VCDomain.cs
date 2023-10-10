@@ -7,7 +7,7 @@ using System.IO;
 
 namespace Caesar
 {
-    public class VCDomain
+    public class VCDomain : CaesarObject
     {
 
         public string? Qualifier;
@@ -15,14 +15,14 @@ namespace Caesar
         public CaesarStringReference? Description;
         public string? ReadServiceName;
         public string? WriteServiceName;
-        private int? FragmentCount;
-        private int? FragmentTableOffset;
+
+        public CaesarTable<VCFragment>? VCFragments;
+
         public int? DumpSize;
         private int? DefaultStringCount; // exposed as DefaultData.Count
         private int? StringTableOffset; // exposed as DefaultData
         public int? Unk1;
 
-        public List<VCFragment> VCFragments = new List<VCFragment>();
         [Newtonsoft.Json.JsonIgnore]
         public ECU ParentECU;
 
@@ -34,9 +34,12 @@ namespace Caesar
         public void Restore(CTFLanguage language, ECU parentEcu) 
         {
             ParentECU = parentEcu;
-            foreach (VCFragment fragment in VCFragments) 
+            if (VCFragments != null)
             {
-                fragment.Restore(parentEcu, this, language);
+                foreach (VCFragment fragment in VCFragments.GetObjects())
+                {
+                    fragment.ParentDomain = this;
+                }
             }
         }
 
@@ -51,6 +54,7 @@ namespace Caesar
             ParentECU = parentEcu;
             BaseAddress = baseAddress;
             Index = variantCodingDomainEntry;
+            AbsoluteAddress = (int)BaseAddress;
 
             /*
             byte[] variantCodingPool = parentEcu.ReadVarcodingPool(reader);
@@ -67,32 +71,21 @@ namespace Caesar
             long baseAddress = vcdBlockAddress;
             */
             reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
-            ulong bitflags = reader.ReadUInt16();
+            Bitflags = reader.ReadUInt16();
 
-            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
-            Name = reader.ReadBitflagStringRef(ref bitflags, language);
-            Description = reader.ReadBitflagStringRef(ref bitflags, language);
-            ReadServiceName = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
-            WriteServiceName = reader.ReadBitflagStringWithReader(ref bitflags, baseAddress);
-            FragmentCount = reader.ReadBitflagInt32(ref bitflags);
-            FragmentTableOffset = reader.ReadBitflagInt32(ref bitflags) + (int)baseAddress; // demoting long (warning)
-            DumpSize = reader.ReadBitflagInt32(ref bitflags);
-            DefaultStringCount = reader.ReadBitflagInt32(ref bitflags);
-            StringTableOffset = reader.ReadBitflagInt32(ref bitflags);
-            Unk1 = reader.ReadBitflagInt16(ref bitflags);
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, baseAddress);
+            Name = reader.ReadBitflagStringRef(ref Bitflags, language);
+            Description = reader.ReadBitflagStringRef(ref Bitflags, language);
+            ReadServiceName = reader.ReadBitflagStringWithReader(ref Bitflags, baseAddress);
+            WriteServiceName = reader.ReadBitflagStringWithReader(ref Bitflags, baseAddress);
+
+            VCFragments = reader.ReadBitflagSubTableAlt<VCFragment>(this, language, parentEcu);
+            DumpSize = reader.ReadBitflagInt32(ref Bitflags);
+            DefaultStringCount = reader.ReadBitflagInt32(ref Bitflags);
+            StringTableOffset = reader.ReadBitflagInt32(ref Bitflags);
+            Unk1 = reader.ReadBitflagInt16(ref Bitflags);
 
             // PrintDebug();
-
-            VCFragments = new List<VCFragment>();
-            if (FragmentCount != null && FragmentTableOffset != null)
-            {
-                for (int fragmentIndex = 0; fragmentIndex < FragmentCount; fragmentIndex++)
-                {
-                    VCFragment fragment = new VCFragment(reader, this, (long)FragmentTableOffset, fragmentIndex, language, parentEcu);
-                    VCFragments.Add(fragment);
-                }
-            }
-            // ValidateFragmentCoverage();
 
             DefaultData = new List<Tuple<string, byte[]>>();
             if (DefaultStringCount != null && StringTableOffset != null)
@@ -139,11 +132,11 @@ namespace Caesar
         private void ValidateFragmentCoverage()
         {
             // apparently gaps are okay, there isn't a 100% way to find out if parsing errors have snuck through
-            if (DumpSize != null)
+            if (DumpSize != null && VCFragments != null)
             {
                 int bitCursor = 0;
                 int expectedLengthInBits = (int)DumpSize * 8;
-                List<VCFragment> fragments = new List<VCFragment>(VCFragments);
+                List<VCFragment> fragments = new List<VCFragment>(VCFragments.GetObjects());
                 List<int> bitGapPositions = new List<int>();
 
                 while (fragments.Count > 0)
@@ -176,13 +169,17 @@ namespace Caesar
             Console.WriteLine($"{nameof(ReadServiceName)} : {ReadServiceName}");
             Console.WriteLine($"{nameof(WriteServiceName)} : {WriteServiceName}");
 
-            Console.WriteLine($"{nameof(FragmentCount)} : {FragmentCount}");
-            Console.WriteLine($"{nameof(FragmentTableOffset)} : 0x{FragmentTableOffset:X}");
+            Console.WriteLine($"{nameof(VCFragments)} : {VCFragments}");
             Console.WriteLine($"{nameof(DumpSize)} : {DumpSize}");
             Console.WriteLine($"{nameof(DefaultStringCount)} : {DefaultStringCount}");
             Console.WriteLine($"{nameof(StringTableOffset)} : {StringTableOffset}");
             Console.WriteLine($"{nameof(Unk1)} : {Unk1}");
 
+        }
+
+        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        {
+            throw new NotImplementedException();
         }
     }
 }

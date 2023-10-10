@@ -30,6 +30,19 @@ namespace Caesar
             return true;
         }
 
+        public T? GetParentByType<T>() where T : CaesarObject
+        {
+            CaesarObject? parent = ParentObject;
+            while(parent != null)
+            {
+                if(parent.GetType() == typeof(T))
+                {
+                    return (T)parent;
+                }
+            }
+            return null;
+        }
+
         public bool Read(CaesarReader reader, CaesarObject parentObject, CTFLanguage language, ECU? currentEcu)
         {
             ParentObject = parentObject;

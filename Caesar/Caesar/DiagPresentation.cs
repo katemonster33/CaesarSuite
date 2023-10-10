@@ -11,7 +11,7 @@ namespace Caesar
     {
         public string? Qualifier;
         public CaesarStringReference? Description;
-        public CaesarBasicTable<Scale>? Scales;
+        public CaesarTable<Scale>? Scales;
         public int? Unk5;
         public int? NumberChoices;
         public int? Unk7;

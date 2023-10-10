@@ -25,7 +25,7 @@ namespace Caesar
         public int? CCFHandle;
         public int? VarcodeDumpSize;
         public byte[]? VarcodeDump;
-        public CaesarBasicTable<VCSubfragment>? Subfragments;
+        public CaesarTable<VCSubfragment>? Subfragments;
         public string? Qualifier;
 
         public ushort ImplementationUpper;
@@ -38,70 +38,10 @@ namespace Caesar
         private static readonly byte[] FragmentLengthTable = new byte[] { 0, 1, 4, 8, 0x10, 0x20, 0x40 };
         [Newtonsoft.Json.JsonIgnore]
         public VCDomain ParentDomain;
-        [Newtonsoft.Json.JsonIgnore]
-        public ECU ParentECU;
 
-        public void Restore(ECU parentEcu, VCDomain parentDomain, CTFLanguage language) 
-        {
-            ParentECU = parentEcu;
-            ParentDomain = parentDomain;
-        }
-
-        public VCFragment() 
+        public VCFragment()
         {
             ParentDomain = new VCDomain();
-            ParentECU = new ECU();
-        }
-
-        public VCFragment(CaesarReader reader, VCDomain parentDomain, long fragmentTable, int fragmentIndex, CTFLanguage language, ECU parentEcu) 
-        {
-            // see DIOpenVarCodeFrag
-            ParentDomain = parentDomain;
-            ParentECU = parentEcu;
-
-            long fragmentTableEntry = fragmentTable + (10 * fragmentIndex);
-            reader.BaseStream.Seek(fragmentTableEntry, SeekOrigin.Begin);
-            // no bitflag required for 10-byte table entry since it is mandatory
-            int fragmentNewBaseOffset = reader.ReadInt32();
-
-            ByteBitPos = reader.ReadInt32();
-            ImplementationType = reader.ReadUInt16();
-
-            // Console.WriteLine($"Fragment new base @ 0x{fragmentNewBaseOffset:X}, byteBitPos 0x{fragmentByteBitPos:X}, implementationType: 0x{implementationType:X}");
-            long fragmentBaseAddress = fragmentTable + fragmentNewBaseOffset;
-            reader.BaseStream.Seek(fragmentBaseAddress, SeekOrigin.Begin);
-            Bitflags = reader.ReadUInt32();
-            // Console.WriteLine($"Fragment new bitflag @ 0x{fragmentBitflags:X}");
-
-            Name = reader.ReadBitflagStringRef(ref Bitflags, language);
-            Description = reader.ReadBitflagStringRef(ref Bitflags, language);
-            ReadAccessLevel = reader.ReadBitflagUInt8(ref Bitflags);
-            WriteAccessLevel = reader.ReadBitflagUInt8(ref Bitflags);
-            ByteOrder = reader.ReadBitflagUInt16(ref Bitflags);
-            RawBitLength = reader.ReadBitflagInt32(ref Bitflags);
-            IttOffset = reader.ReadBitflagInt32(ref Bitflags);
-            InfoPoolIndex = reader.ReadBitflagInt32(ref Bitflags);
-            MeaningB = reader.ReadBitflagInt32(ref Bitflags);
-            MeaningC = reader.ReadBitflagInt32(ref Bitflags);
-            CCFHandle = reader.ReadBitflagInt16(ref Bitflags);
-            VarcodeDumpSize = reader.ReadBitflagInt32(ref Bitflags);
-            VarcodeDump = reader.ReadBitflagDumpWithReader(ref Bitflags, VarcodeDumpSize, fragmentBaseAddress);
-            AbsoluteAddress = (int)fragmentBaseAddress;
-            Subfragments = reader.ReadBitflagSubTable<VCSubfragment>(this, language, parentEcu);
-            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, fragmentBaseAddress);
-
-            // Console.WriteLine($"{nameof(fragmentName)} : {fragmentName}, child {fragmentNoOfSubFragments} @ 0x{fragmentSubfragmentFileOffset:X} base {fragmentBaseAddress:X}");
-
-            
-            if (ByteOrder  != null && ByteOrder != 0 && BitLength > 0)
-            {
-                //throw new Exception("Currently assumes everything is little-endian");
-                Console.WriteLine($"WARNING: {Qualifier} (Size: {BitLength}) has an unsupported byte order. Please proceed with caution");
-                //PrintDebug(true);
-            }
-            // PrintDebug();
-            // Console.WriteLine($"implementation-default : {implementationType:X4} upper: {(implementationType & 0xFF0):X4} lower: {(implementationType & 0xF):X4}");
-            FindFragmentSize(reader);
         }
 
         public VCSubfragment? GetSubfragmentConfiguration(byte[] variantCodingValue)
@@ -125,6 +65,7 @@ namespace Caesar
             }
             return null;
         }
+
         public byte[] SetSubfragmentConfiguration(byte[] variantCodingValue, string subfragmentName)
         {
             if (Subfragments != null)
@@ -154,7 +95,7 @@ namespace Caesar
             return BitUtility.BitArrayToByteArray(result.ToArray());
         }
 
-        private void FindFragmentSize(BinaryReader reader)
+        private void FindFragmentSize(BinaryReader reader, ECU parentEcu)
         {
             ImplementationUpper = (ushort)(ImplementationType & 0xFF0);
             ImplementationLower = (ushort)(ImplementationType & 0xF);
@@ -166,11 +107,11 @@ namespace Caesar
                 throw new NotImplementedException("The disassembly throws an exception when fragmentImplementationLower > 6, copying verbatim");
             }
 
-            if (ImplementationUpper > 0x420 && InfoPoolIndex != null && ParentECU.GlobalInternalPresentations != null)
+            if (ImplementationUpper > 0x420 && InfoPoolIndex != null && parentEcu.GlobalInternalPresentations != null)
             {
                 // Console.WriteLine($"fragment value upper: {fragmentImplementationUpper:X}");
 
-                DiagPresentation pres = ParentECU.GlobalInternalPresentations.GetObjects()[(int)InfoPoolIndex];
+                DiagPresentation pres = parentEcu.GlobalInternalPresentations.GetObjects()[(int)InfoPoolIndex];
                 /*
                 // depreciate use of ReadCBFWithOffset
                 poolReader.BaseStream.Seek(ecu.Info_EntrySize * InfoPoolIndex, SeekOrigin.Begin);
@@ -268,9 +209,54 @@ namespace Caesar
 
         }
 
+        protected override bool ReadHeader(CaesarReader reader)
+        {
+            base.ReadHeader(reader);
+
+            ByteBitPos = reader.ReadInt32();
+            ImplementationType = reader.ReadUInt16();
+
+            return true;
+        }
+
         protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
         {
-            throw new NotImplementedException();
+            Bitflags = reader.ReadUInt32();
+            // Console.WriteLine($"Fragment new bitflag @ 0x{fragmentBitflags:X}");
+
+            Name = reader.ReadBitflagStringRef(ref Bitflags, language);
+            Description = reader.ReadBitflagStringRef(ref Bitflags, language);
+            ReadAccessLevel = reader.ReadBitflagUInt8(ref Bitflags);
+            WriteAccessLevel = reader.ReadBitflagUInt8(ref Bitflags);
+            ByteOrder = reader.ReadBitflagUInt16(ref Bitflags);
+            RawBitLength = reader.ReadBitflagInt32(ref Bitflags);
+            IttOffset = reader.ReadBitflagInt32(ref Bitflags);
+            InfoPoolIndex = reader.ReadBitflagInt32(ref Bitflags);
+            MeaningB = reader.ReadBitflagInt32(ref Bitflags);
+            MeaningC = reader.ReadBitflagInt32(ref Bitflags);
+            CCFHandle = reader.ReadBitflagInt16(ref Bitflags);
+            VarcodeDumpSize = reader.ReadBitflagInt32(ref Bitflags);
+            VarcodeDump = reader.ReadBitflagDumpWithReader(ref Bitflags, VarcodeDumpSize, AbsoluteAddress);
+
+            Subfragments = reader.ReadBitflagSubTable<VCSubfragment>(this, language, currentEcu);
+
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+
+            // Console.WriteLine($"{nameof(fragmentName)} : {fragmentName}, child {fragmentNoOfSubFragments} @ 0x{fragmentSubfragmentFileOffset:X} base {fragmentBaseAddress:X}");
+
+
+            if (ByteOrder != null && ByteOrder != 0 && BitLength > 0)
+            {
+                //throw new Exception("Currently assumes everything is little-endian");
+                Console.WriteLine($"WARNING: {Qualifier} (Size: {BitLength}) has an unsupported byte order. Please proceed with caution");
+                //PrintDebug(true);
+            }
+            // PrintDebug();
+            // Console.WriteLine($"implementation-default : {implementationType:X4} upper: {(implementationType & 0xFF0):X4} lower: {(implementationType & 0xF):X4}");
+            if (currentEcu != null)
+            {
+                FindFragmentSize(reader, currentEcu);
+            }
         }
     }
 }

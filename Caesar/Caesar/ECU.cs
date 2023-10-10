@@ -35,20 +35,20 @@ namespace Caesar
         private int? EcuVariant_EntrySize;
         private int? EcuVariant_BlockSize;
 
-        public CaesarLargeTable<DiagService>? GlobalDiagServices;
+        public CaesarTable<DiagService>? GlobalDiagServices;
 
-        public CaesarLargeTable<DTC>? GlobalDTCs;
+        public CaesarTable<DTC>? GlobalDTCs;
 
-        public CaesarLargeTable<EnvironmentContext>? GlobalEnvironmentContexts;
+        public CaesarTable<EnvironmentContext>? GlobalEnvironmentContexts;
 
         private int? VcDomain_BlockOffset; // 5 , 0x15716
         private int? VcDomain_EntryCount; // [1], 43 0x2B
         private int? VcDomain_EntrySize; // [2], 12 0xC (multiply with [1] for size), 43*12=516 = 0x204
         private int? VcDomain_BlockSize; // [3] unused
 
-        public CaesarLargeTable<DiagPresentation>? GlobalPresentations;
+        public CaesarTable<DiagPresentation>? GlobalPresentations;
 
-        public CaesarLargeTable<DiagPresentation>? GlobalInternalPresentations;
+        public CaesarTable<DiagPresentation>? GlobalInternalPresentations;
 
         private int? Unk_BlockOffset;
         private int? Unk_EntryCount;
@@ -98,6 +98,10 @@ namespace Caesar
             {
                 variant.Restore(language, this);
             }
+
+            GlobalDiagServices?.GetObjects().ForEach(ds => ds.Restore(language, this));
+
+            GlobalEnvironmentContexts?.GetObjects().ForEach(ds => ds.Restore(language, this));
         }
 
         public byte[] ReadVariantPool(BinaryReader reader)
@@ -134,8 +138,8 @@ namespace Caesar
 
         public ECU()
         {
-            GlobalDTCs = new CaesarLargeTable<DTC>();
-            GlobalEnvironmentContexts = new CaesarLargeTable<EnvironmentContext>();
+            GlobalDTCs = new CaesarTable<DTC>();
+            GlobalEnvironmentContexts = new CaesarTable<EnvironmentContext>();
             Language = new CTFLanguage();
             ParentContainer = new CaesarContainer();
         }

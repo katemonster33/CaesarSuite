@@ -10,7 +10,7 @@ namespace Caesar
     public class CaesarReference<T> where T : CaesarObject, new()
     {
         [Newtonsoft.Json.JsonIgnore]
-        public CaesarLargeTable<T>? ReferenceTable { get; set; }
+        public CaesarTable<T>? ReferenceTable { get; set; }
         public int Index { get; set; }
         public int? Count { get; set; }
 
@@ -36,7 +36,7 @@ namespace Caesar
             Index = 0;
         }
 
-        public CaesarReference(int id, CaesarLargeTable<T> table)
+        public CaesarReference(int id, CaesarTable<T> table)
         {
             Index = id;
             ReferenceTable = table;

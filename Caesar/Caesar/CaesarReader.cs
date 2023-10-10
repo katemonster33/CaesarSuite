@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -139,21 +140,56 @@ namespace Caesar
             return null;
         }
 
-        public CaesarBasicTable<C>? ReadBitflagSubTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
+        public CaesarTable<C>? ReadBitflagSubTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
         {
-            var output = new CaesarBasicTable<C>();
-            if(output.Read(this, parentObject, language, currentEcu))
+            var output = new CaesarTable<C>();
+
+            int? blockOffset = ReadBitflagInt32(ref parentObject.Bitflags);
+            int? entryCount = ReadBitflagInt32(ref parentObject.Bitflags);
+
+            if (blockOffset != null && entryCount != null)
             {
+                output.RelativeAddress = (int)blockOffset;
+                output.EntryCount = (int)entryCount;
+                output.Read(this, parentObject, language, currentEcu);
                 return output;
             }
             return null;
         }
 
-        public CaesarLargeTable<C>? ReadBitflagTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
+        public CaesarTable<C>? ReadBitflagSubTableAlt<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
         {
-            var output = new CaesarLargeTable<C>();
-            if (output.Read(this, parentObject, language, currentEcu))
+            var output = new CaesarTable<C>();
+
+            int? entryCount = ReadBitflagInt32(ref parentObject.Bitflags);
+            int? blockOffset = ReadBitflagInt32(ref parentObject.Bitflags);
+
+            if (blockOffset != null && entryCount != null)
             {
+                output.RelativeAddress = (int)blockOffset;
+                output.EntryCount = (int)entryCount;
+                output.Read(this, parentObject, language, currentEcu);
+                return output;
+            }
+            return null;
+        }
+
+        public CaesarTable<C>? ReadBitflagTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
+        {
+            var output = new CaesarTable<C>();
+
+            int? blockOffset = ReadBitflagInt32(ref parentObject.Bitflags);
+            int? entryCount = ReadBitflagInt32(ref parentObject.Bitflags);
+            int? entrySize = ReadBitflagInt32(ref parentObject.Bitflags);
+            int? blockSize = ReadBitflagInt32(ref parentObject.Bitflags);
+
+            if (blockOffset != null && entryCount != null && entrySize != null)
+            {
+                output.RelativeAddress = (int)blockOffset;
+                output.EntryCount = (int)entryCount;
+                output.EntrySize = entrySize;
+                output.BlockSize = blockSize ?? (entryCount * entrySize);
+                output.Read(this, parentObject, language, currentEcu);
                 return output;
             }
             return null;

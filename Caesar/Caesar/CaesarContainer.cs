@@ -53,6 +53,9 @@ namespace Caesar
                 // language is the highest priority since all our strings come from it
                 ReadCTF(reader);
                 ReadECU(reader);
+
+                //Restore now resolves references and performs post-read operations so we must call it here.
+                CaesarECUs.ForEach(ecu => ecu.Restore(ecu.Language, this));
             }
 
             sw.Stop();
