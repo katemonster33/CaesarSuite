@@ -151,11 +151,14 @@ namespace Caesar
         {
             foreach (ECU ecu in CaesarECUs)
             {
-                foreach (ECUVariant variant in ecu.ECUVariants)
+                if (ecu.ECUVariants != null)
                 {
-                    if (variant.Qualifier == name)
+                    foreach (ECUVariant variant in ecu.ECUVariants.GetObjects())
                     {
-                        return variant;
+                        if (variant.Qualifier == name)
+                        {
+                            return variant;
+                        }
                     }
                 }
             }
@@ -179,11 +182,14 @@ namespace Caesar
 
             foreach (ECU ecu in CaesarECUs)
             {
-                foreach (ECUVariant variant in ecu.ECUVariants)
+                if (ecu.ECUVariants != null)
                 {
-                    if (variant.Qualifier != null)
+                    foreach (ECUVariant variant in ecu.ECUVariants.GetObjects())
                     {
-                        result.Add(variant.Qualifier);
+                        if (variant.Qualifier != null)
+                        {
+                            result.Add(variant.Qualifier);
+                        }
                     }
                 }
             }

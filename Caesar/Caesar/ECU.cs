@@ -30,10 +30,7 @@ namespace Caesar
         public int? EcuSgmlSource;
         public int? Unk6RelativeOffset;
 
-        private int? EcuVariant_BlockOffset; // 1
-        private int? EcuVariant_EntryCount;
-        private int? EcuVariant_EntrySize;
-        private int? EcuVariant_BlockSize;
+        public CaesarTable<ECUVariant>? ECUVariants;
 
         public CaesarTable<DiagService>? GlobalDiagServices;
 
@@ -41,10 +38,7 @@ namespace Caesar
 
         public CaesarTable<EnvironmentContext>? GlobalEnvironmentContexts;
 
-        private int? VcDomain_BlockOffset; // 5 , 0x15716
-        private int? VcDomain_EntryCount; // [1], 43 0x2B
-        private int? VcDomain_EntrySize; // [2], 12 0xC (multiply with [1] for size), 43*12=516 = 0x204
-        private int? VcDomain_BlockSize; // [3] unused
+        public CaesarTable<VCDomain>? GlobalVCDs;
 
         public CaesarTable<DiagPresentation>? GlobalPresentations;
 
@@ -59,9 +53,7 @@ namespace Caesar
 
         public List<ECUInterface> ECUInterfaces = new List<ECUInterface>();
         public List<ECUInterfaceSubtype> ECUInterfaceSubtypes = new List<ECUInterfaceSubtype>();
-        public List<ECUVariant> ECUVariants = new List<ECUVariant>();
 
-        public List<VCDomain> GlobalVCDs = new List<VCDomain>();
 
         private long BaseAddress;
         [Newtonsoft.Json.JsonIgnore]
@@ -70,21 +62,19 @@ namespace Caesar
         [Newtonsoft.Json.JsonIgnore]
         public CaesarContainer ParentContainer;
 
-        byte[] cachedVarcodingPool = new byte[] { };
-        byte[] cachedVariantPool = new byte[] { };
-        byte[] cachedDiagjobPool = new byte[] { };
-        byte[] cachedEcuInfoPool = new byte[] { };
-        byte[] cachedPresentationsPool = new byte[] { };
-        byte[] cachedInternalPresentationsPool = new byte[] { };
         byte[] cachedUnkPool = new byte[] { };
 
         public void Restore(CTFLanguage language, CaesarContainer parentContainer)
         {
             Language = language;
             ParentContainer = parentContainer;
-            foreach (VCDomain vc in GlobalVCDs)
+
+            if (GlobalVCDs != null)
             {
-                vc.Restore(language, this);
+                foreach (VCDomain vc in GlobalVCDs.GetObjects())
+                {
+                    vc.Restore(language, this);
+                }
             }
             foreach (ECUInterface iface in ECUInterfaces)
             {
@@ -94,9 +84,12 @@ namespace Caesar
             {
                 iface.Restore(language);
             }
-            foreach (ECUVariant variant in ECUVariants)
+            if (ECUVariants != null)
             {
-                variant.Restore(language, this);
+                foreach (ECUVariant variant in ECUVariants.GetObjects())
+                {
+                    variant.Restore(language, this);
+                }
             }
 
             GlobalDiagServices?.GetObjects().ForEach(ds => ds.Restore(language, this));
@@ -104,23 +97,6 @@ namespace Caesar
             GlobalEnvironmentContexts?.GetObjects().ForEach(ds => ds.Restore(language, this));
         }
 
-        public byte[] ReadVariantPool(BinaryReader reader)
-        {
-            if (cachedVariantPool.Length == 0 && EcuVariant_BlockOffset != null && EcuVariant_EntryCount != null && EcuVariant_EntrySize != null)
-            {
-                cachedVariantPool = ReadEcuPool(reader, (int)EcuVariant_BlockOffset, (int)EcuVariant_EntryCount, (int)EcuVariant_EntrySize);
-            }
-            return cachedVariantPool;
-        }
-
-        public byte[] ReadVarcodingPool(BinaryReader reader)
-        {
-            if (cachedVarcodingPool.Length == 0 && VcDomain_BlockOffset != null && VcDomain_EntryCount != null && VcDomain_EntrySize != null)
-            {
-                cachedVarcodingPool = ReadEcuPool(reader, (int)VcDomain_BlockOffset, (int)VcDomain_EntryCount, (int)VcDomain_EntrySize);
-            }
-            return cachedVarcodingPool;
-        }
         public byte[] ReadECUUnkPool(BinaryReader reader)
         {
             if (cachedUnkPool.Length == 0 && Unk_BlockOffset != null && Unk_EntryCount != null && Unk_EntrySize != null)
@@ -184,10 +160,7 @@ namespace Caesar
             int dataBufferOffsetRelativeToFile = (header.StringPoolSize ?? 0) + StubHeader.StubHeaderSize + header.CffHeaderSize + 4;
             AbsoluteAddress = (int)dataBufferOffsetRelativeToFile;
 
-            EcuVariant_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
-            EcuVariant_EntryCount = reader.ReadBitflagInt32(ref Bitflags);
-            EcuVariant_EntrySize = reader.ReadBitflagInt32(ref Bitflags); // 10
-            EcuVariant_BlockSize = reader.ReadBitflagInt32(ref Bitflags);
+            ECUVariants = reader.ReadBitflagTable<ECUVariant>(this, language, this);
 
             GlobalDiagServices = reader.ReadBitflagTable<DiagService>(this, language, this);
 
@@ -195,10 +168,7 @@ namespace Caesar
 
             GlobalEnvironmentContexts = reader.ReadBitflagTable<EnvironmentContext>(this, language, this);
 
-            VcDomain_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
-            VcDomain_EntryCount = reader.ReadBitflagInt32(ref Bitflags);
-            VcDomain_EntrySize = reader.ReadBitflagInt32(ref Bitflags); // 12
-            VcDomain_BlockSize = reader.ReadBitflagInt32(ref Bitflags);
+            GlobalVCDs = reader.ReadBitflagTable<VCDomain>(this, language, this);
 
             GlobalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, language, this);
 
@@ -256,35 +226,7 @@ namespace Caesar
                     ECUInterfaceSubtypes.Add(ecuInterfaceSubtype);
                 }
             }
-            // dependency of variants
-            // requires presentations
-            // dtc has xrefs to envs
-            CreateVCDomains(reader, language);
-
-            CreateEcuVariants(reader, language);
             //PrintDebug();
-        }
-
-        public void CreateVCDomains(CaesarReader reader, CTFLanguage language)
-        {
-            if (VcDomain_BlockOffset != null && VcDomain_EntryCount != null)
-            {
-                byte[] vcPool = ReadVarcodingPool(reader);
-                VCDomain[] globalVCDs = new VCDomain[(int)VcDomain_EntryCount];
-                using (BinaryReader poolReader = new BinaryReader(new MemoryStream(vcPool)))
-                {
-                    for (int vcdIndex = 0; vcdIndex < VcDomain_EntryCount; vcdIndex++)
-                    {
-                        int entryOffset = poolReader.ReadInt32();
-                        int entrySize = poolReader.ReadInt32();
-                        uint entryCrc = poolReader.ReadUInt32();
-                        long vcdBlockAddress = entryOffset + (long)VcDomain_BlockOffset;
-                        VCDomain vcd = new VCDomain(reader, language, vcdBlockAddress, vcdIndex, this);
-                        globalVCDs[vcdIndex] = vcd;
-                    }
-                }
-                GlobalVCDs = new List<VCDomain>(globalVCDs);
-            }
         }
 
         //public void CreateUnk(BinaryReader reader, CTFLanguage language)
@@ -297,40 +239,6 @@ namespace Caesar
         //        }
         //    }
         //}
-        public void CreateEcuVariants(CaesarReader reader, CTFLanguage language)
-        {
-            ECUVariants.Clear();
-            if (EcuVariant_BlockOffset != null && EcuVariant_EntryCount != null && EcuVariant_EntrySize != null)
-            {
-                byte[] ecuVariantPool = ReadVariantPool(reader);
-
-                using (CaesarReader poolReader = new CaesarReader(new MemoryStream(ecuVariantPool)))
-                {
-                    for (int ecuVariantIndex = 0; ecuVariantIndex < EcuVariant_EntryCount; ecuVariantIndex++)
-                    {
-                        poolReader.BaseStream.Seek(ecuVariantIndex * (int)EcuVariant_EntrySize, SeekOrigin.Begin);
-
-                        int entryOffset = poolReader.ReadInt32();
-                        int entrySize = poolReader.ReadInt32();
-                        ushort poolEntryAttributes = poolReader.ReadUInt16();
-                        long variantBlockAddress = entryOffset + (long)EcuVariant_BlockOffset;
-
-                        ECUVariant variant = new ECUVariant(reader, this, language, variantBlockAddress, entrySize);
-                        ECUVariants.Add(variant);
-                        // Console.WriteLine($"Variant Entry @ 0x{entryOffset:X} with size 0x{entrySize:X} and CRC {poolEntryAttributes:X8}, abs addr {variantBlockAddress:X8}");
-
-#if DEBUG
-                        int resultLimit = 1999;
-                        if (ecuVariantIndex >= resultLimit)
-                        {
-                            Console.WriteLine($"Breaking prematurely to create only {resultLimit} variant(s) (debug)");
-                            break;
-                        }
-#endif
-                    }
-                }
-            }
-        }
 
         public override string ToString()
         {
@@ -352,10 +260,7 @@ namespace Caesar
                 $"{nameof(EcuSgmlSource)}={EcuSgmlSource}, " +
                 $"{nameof(Unk6RelativeOffset)}=0x{Unk6RelativeOffset:X}, " +
 
-                $"{nameof(EcuVariant_BlockOffset)}=0x{EcuVariant_BlockOffset:X}, " +
-                $"{nameof(EcuVariant_EntryCount)}={EcuVariant_EntryCount}, " +
-                $"{nameof(EcuVariant_EntrySize)}={EcuVariant_EntrySize}, " +
-                $"{nameof(EcuVariant_BlockSize)}=0x{EcuVariant_BlockSize:X}, " +
+                $"{nameof(ECUVariants)}={ECUVariants}, " +
                 $"{nameof(GlobalDiagServices)}={GlobalDiagServices}, " +
                 $"{nameof(GlobalDTCs)}={GlobalDTCs}, " +
                 $"{nameof(GlobalEnvironmentContexts)}={GlobalEnvironmentContexts}, " +
@@ -363,10 +268,7 @@ namespace Caesar
                 // Console.WriteLine("--- bitflag load 2 ---");
 
                 //$"{nameof(Env_BlockSize)}=0x{Env_BlockSize:X}, " +
-                $"{nameof(VcDomain_BlockOffset)}=0x{VcDomain_BlockOffset:X}, " +
-                $"{nameof(VcDomain_EntryCount)}={VcDomain_EntryCount}, " +
-                $"{nameof(VcDomain_EntrySize)}={VcDomain_EntrySize}, " +
-                $"{nameof(VcDomain_BlockSize)}=0x{VcDomain_BlockSize:X}, " +
+                $"{nameof(GlobalVCDs)}={GlobalVCDs:X}, " +
                 $"{nameof(GlobalPresentations)}={GlobalPresentations}, " +
                 $"{nameof(GlobalInternalPresentations)}={GlobalInternalPresentations}, " +
                 $"{nameof(Unk_BlockOffset)}=0x{Unk_BlockOffset:X}, " +

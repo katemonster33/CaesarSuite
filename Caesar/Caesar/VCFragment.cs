@@ -95,7 +95,7 @@ namespace Caesar
             return BitUtility.BitArrayToByteArray(result.ToArray());
         }
 
-        private void FindFragmentSize(BinaryReader reader, ECU parentEcu)
+        void FindFragmentSize(ECU parentEcu)
         {
             ImplementationUpper = (ushort)(ImplementationType & 0xFF0);
             ImplementationLower = (ushort)(ImplementationType & 0xF);
@@ -253,10 +253,11 @@ namespace Caesar
             }
             // PrintDebug();
             // Console.WriteLine($"implementation-default : {implementationType:X4} upper: {(implementationType & 0xFF0):X4} lower: {(implementationType & 0xF):X4}");
-            if (currentEcu != null)
-            {
-                FindFragmentSize(reader, currentEcu);
-            }
+        }
+
+        public void Restore(ECU parentEcu)
+        {
+            FindFragmentSize(parentEcu);
         }
     }
 }
