@@ -74,10 +74,6 @@ namespace Caesar
                     vc.Restore(language, this);
                 }
             }
-            foreach (ECUInterface iface in ECUInterfaces)
-            {
-                iface.Restore(language);
-            }
             foreach (ECUInterfaceSubtype iface in ECUInterfaceSubtypes)
             {
                 iface.Restore(language);
@@ -167,7 +163,7 @@ namespace Caesar
                 $"{nameof(Unk39)}={Unk39}";
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             CFFHeader = GetParentByType<CFFHeader>() ?? new CFFHeader();
             // Read 32+16 bits
@@ -181,8 +177,8 @@ namespace Caesar
             // Console.WriteLine($"Skipping: {ecuHdrIdk1:X8}");
 
             Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
-            EcuName = reader.ReadBitflagStringRef(ref Bitflags, language);
-            EcuDescription = reader.ReadBitflagStringRef(ref Bitflags, language);
+            EcuName = reader.ReadBitflagStringRef(ref Bitflags, container);
+            EcuDescription = reader.ReadBitflagStringRef(ref Bitflags, container);
             EcuXmlVersion = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
             InterfaceBlockCount = reader.ReadBitflagInt32(ref Bitflags);
             InterfaceTableOffset = reader.ReadBitflagInt32(ref Bitflags);
@@ -205,19 +201,19 @@ namespace Caesar
             int dataBufferOffsetRelativeToFile = (CFFHeader.StringPoolSize ?? 0) + StubHeader.StubHeaderSize + CFFHeader.CffHeaderSize + 4;
             AbsoluteAddress = (int)dataBufferOffsetRelativeToFile;
 
-            ECUVariants = reader.ReadBitflagTable<ECUVariant>(this, language, this);
+            ECUVariants = reader.ReadBitflagTable<ECUVariant>(this, container);
 
-            GlobalDiagServices = reader.ReadBitflagTable<DiagService>(this, language, this);
+            GlobalDiagServices = reader.ReadBitflagTable<DiagService>(this, container);
 
-            GlobalDTCs = reader.ReadBitflagTable<DTC>(this, language, this);
+            GlobalDTCs = reader.ReadBitflagTable<DTC>(this, container);
 
-            GlobalEnvironmentContexts = reader.ReadBitflagTable<EnvironmentContext>(this, language, this);
+            GlobalEnvironmentContexts = reader.ReadBitflagTable<EnvironmentContext>(this, container);
 
-            GlobalVCDs = reader.ReadBitflagTable<VCDomain>(this, language, this);
+            GlobalVCDs = reader.ReadBitflagTable<VCDomain>(this, container);
 
-            GlobalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, language, this);
+            GlobalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, container);
 
-            GlobalInternalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, language, this);
+            GlobalInternalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, container);
 
             Unk_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
             Unk_EntryCount = reader.ReadBitflagInt32(ref Bitflags);
@@ -247,7 +243,7 @@ namespace Caesar
 
                     long ecuInterfaceBaseAddress = interfaceTableAddress + interfaceBlockOffset;
 
-                    ECUInterface ecuInterface = new ECUInterface(reader, ecuInterfaceBaseAddress);
+                    ECUInterface ecuInterface = new ECUInterface(reader, container, ecuInterfaceBaseAddress);
                     ECUInterfaces.Add(ecuInterface);
                 }
             }
@@ -267,7 +263,7 @@ namespace Caesar
                     int actualBlockOffset = reader.ReadInt32();
                     long ctBaseAddress = ctTableAddress + actualBlockOffset;
 
-                    ECUInterfaceSubtype ecuInterfaceSubtype = new ECUInterfaceSubtype(reader, ctBaseAddress, ctBufferIndex, language);
+                    ECUInterfaceSubtype ecuInterfaceSubtype = new ECUInterfaceSubtype(reader, ctBaseAddress, ctBufferIndex);
                     ECUInterfaceSubtypes.Add(ecuInterfaceSubtype);
                 }
             }

@@ -10,7 +10,7 @@ namespace Caesar
     public class CaesarStringReference
     {
         [JsonIgnore]
-        public CTFLanguage? LanguageTable { get; set; }
+        public CaesarContainer? Container { get; set; }
         public int Index { get; set; }
 
         string? text = null;
@@ -18,9 +18,9 @@ namespace Caesar
         { 
             get
             {
-                if (text == null && LanguageTable != null)
+                if (text == null && Container != null)
                 {
-                    text = LanguageTable.GetString(Index);
+                    text = Container.Language.GetString(Index);
                 }
                 return text;
             }
@@ -35,9 +35,9 @@ namespace Caesar
             Index = -1;
         }
 
-        public CaesarStringReference(CTFLanguage languageTable, int index)
+        public CaesarStringReference(CaesarContainer container, int index)
         {
-            LanguageTable = languageTable;
+            Container = container;
             Index = index;
         }
     }

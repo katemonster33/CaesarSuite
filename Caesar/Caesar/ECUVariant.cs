@@ -60,10 +60,10 @@ namespace Caesar
             Language = language;
             ParentECU = parentEcu;
 
-            CreateVCDomains(parentEcu, language);
-            CreateDiagServices(parentEcu, language);
-            CreateDTCs(parentEcu, language);
-            CreateEnvironmentContexts(parentEcu, language);
+            CreateVCDomains(parentEcu);
+            CreateDiagServices(parentEcu);
+            CreateDTCs(parentEcu);
+            CreateEnvironmentContexts(parentEcu);
 
             /*
             // no restoring required
@@ -174,7 +174,7 @@ namespace Caesar
             return result.ToArray();
         }
 
-        private void CreateVCDomains(ECU parentEcu, CTFLanguage language)
+        private void CreateVCDomains(ECU parentEcu)
         {
             VCDomains = new List<VCDomain>();
             if (VCDomainPoolOffsets != null)
@@ -190,7 +190,7 @@ namespace Caesar
                 }
             }
         }
-        private void CreateDiagServices(ECU parentEcu, CTFLanguage language)
+        private void CreateDiagServices(ECU parentEcu)
         {
             // unlike variant domains, storing references to the parent objects in the ecu is preferable since this is relatively larger
             //DiagServices = new List<DiagService>();
@@ -249,7 +249,7 @@ namespace Caesar
             }
         }
 
-        private void CreateDTCs(ECU parentEcu, CTFLanguage language)
+        private void CreateDTCs(ECU parentEcu)
         {
             if (parentEcu.GlobalDTCs == null)
             {
@@ -307,7 +307,7 @@ namespace Caesar
             */
         }
 
-        private void CreateXrefs(BinaryReader reader, ECU parentEcu, CTFLanguage language)
+        private void CreateXrefs(BinaryReader reader)
         {
             Xrefs = new int[Xref_Count ?? 0];
             if (Xref_Count != null && Xref_Offset != null)
@@ -320,7 +320,7 @@ namespace Caesar
             }
         }
 
-        private void CreateEnvironmentContexts(ECU parentEcu, CTFLanguage language)
+        private void CreateEnvironmentContexts(ECU parentEcu)
         {
             if (EnvironmentContextsPoolOffsets != null)
             {
@@ -407,7 +407,7 @@ namespace Caesar
             return true;
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             int blockSize = 0;
             if (ParentObject is CaesarTable<ECUVariant> varTable && varTable.EntrySize != null)
@@ -422,29 +422,29 @@ namespace Caesar
                 int skip = variantReader.ReadInt32();
 
                 Qualifier = variantReader.ReadBitflagStringWithReader(ref Bitflags);
-                Name = variantReader.ReadBitflagStringRef(ref Bitflags, language);
-                Description = variantReader.ReadBitflagStringRef(ref Bitflags, language);
+                Name = variantReader.ReadBitflagStringRef(ref Bitflags, container);
+                Description = variantReader.ReadBitflagStringRef(ref Bitflags, container);
                 UnkStr1 = variantReader.ReadBitflagStringWithReader(ref Bitflags);
                 UnkStr2 = variantReader.ReadBitflagStringWithReader(ref Bitflags);
 
                 Unk1 = variantReader.ReadBitflagInt32(ref Bitflags);  // 1 
                 int oldAddress = AbsoluteAddress;
                 AbsoluteAddress = 0;
-                VariantPatterns = variantReader.ReadBitflagSubTableAlt<ECUVariantPattern>(this, language, currentEcu);
+                VariantPatterns = variantReader.ReadBitflagSubTableAlt<ECUVariantPattern>(this, container);
                 AbsoluteAddress = oldAddress;
                 SubsectionB_Count = variantReader.ReadBitflagInt32(ref Bitflags);  // 4 
                 SubsectionB_Offset = variantReader.ReadBitflagInt32(ref Bitflags);  // 5 
-                ComParameters = variantReader.ReadBitflagSubTableAlt<ComParameter>(this, language, currentEcu);
+                ComParameters = variantReader.ReadBitflagSubTableAlt<ComParameter>(this, container);
                 DiagServiceCode_Count = variantReader.ReadBitflagInt32(ref Bitflags);  // 8 
                 DiagServiceCode_Offset = variantReader.ReadBitflagInt32(ref Bitflags);  // 9 
-                DiagServicesPoolOffsets = variantReader.ReadBitflagPool(this, language, currentEcu);
+                DiagServicesPoolOffsets = variantReader.ReadBitflagPool(this, container);
                 DTC_Count = variantReader.ReadBitflagInt32(ref Bitflags);  // 12 
                 DTC_Offset = variantReader.ReadBitflagInt32(ref Bitflags);  // 13 
-                EnvironmentContextsPoolOffsets = variantReader.ReadBitflagPool(this, language, currentEcu);
+                EnvironmentContextsPoolOffsets = variantReader.ReadBitflagPool(this, container);
                 Xref_Count = variantReader.ReadBitflagInt32(ref Bitflags);  // 16
                 Xref_Offset = variantReader.ReadBitflagInt32(ref Bitflags);  // 17 
 
-                VCDomainPoolOffsets = variantReader.ReadBitflagPool(this, language, currentEcu);
+                VCDomainPoolOffsets = variantReader.ReadBitflagPool(this, container);
 
                 NegativeResponseName = variantReader.ReadBitflagStringWithReader(ref Bitflags);
                 UnkByte = variantReader.ReadBitflagInt8(ref Bitflags);  // 20 byte
@@ -465,14 +465,15 @@ namespace Caesar
                     }
                 }
             }
-            if (currentEcu != null)
+            ECU? parentEcu = GetParentByType<ECU>();
+            if (parentEcu != null)
             {
-                CreateVCDomains(currentEcu, language);
-                CreateDiagServices(currentEcu, language);
-                CreateComParameters(reader, currentEcu);
-                CreateDTCs(currentEcu, language);
-                CreateEnvironmentContexts(currentEcu, language);
-                CreateXrefs(reader, currentEcu, language);
+                CreateVCDomains(parentEcu);
+                CreateDiagServices(parentEcu);
+                CreateComParameters(reader, parentEcu);
+                CreateDTCs(parentEcu);
+                CreateEnvironmentContexts(parentEcu);
+                CreateXrefs(reader);
             }
         }
     }

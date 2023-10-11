@@ -80,7 +80,7 @@ namespace Caesar
             Console.WriteLine($"PatternType : {PatternType}");
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             Bitflags = reader.ReadUInt32();
 

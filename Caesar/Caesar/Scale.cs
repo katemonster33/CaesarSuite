@@ -50,7 +50,7 @@ namespace Caesar
                 $"{nameof(UnkC)}={UnkC}, ";
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             Bitflags = reader.ReadUInt16();
 
@@ -69,7 +69,7 @@ namespace Caesar
             USCount = reader.ReadBitflagInt32(ref Bitflags);
             OffsetUS = reader.ReadBitflagInt32(ref Bitflags);
 
-            EnumDescription = reader.ReadBitflagStringRef(ref Bitflags, language);
+            EnumDescription = reader.ReadBitflagStringRef(ref Bitflags, container);
             UnkC = reader.ReadBitflagInt32(ref Bitflags);
         }
     }

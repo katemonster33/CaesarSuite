@@ -56,14 +56,14 @@ namespace Caesar
             return RelativeAddress != -1;
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             Objects.Clear();
             for (int index = 0; index < EntryCount; index++)
             {
                 T obj = new T();
                 obj.PoolIndex = index;
-                obj.Read(reader, this, language, currentEcu);
+                obj.Read(reader, this, container);
                 Objects.Add(obj);
             }
         }

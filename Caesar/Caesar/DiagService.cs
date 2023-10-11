@@ -167,17 +167,17 @@ namespace Caesar
             }
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
-            ParentECU = currentEcu ?? new ECU();
+            ParentECU = GetParentByType<ECU>() ?? new ECU();
 
             Bitflags = reader.ReadUInt32();
             Bitflags |= (ulong)reader.ReadUInt32() << 32;
 
             Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
 
-            Name = reader.ReadBitflagStringRef(ref Bitflags, language);
-            Description = reader.ReadBitflagStringRef(ref Bitflags, language);
+            Name = reader.ReadBitflagStringRef(ref Bitflags, container);
+            Description = reader.ReadBitflagStringRef(ref Bitflags, container);
 
             DataClass_ServiceType = reader.ReadBitflagUInt16(ref Bitflags);
             DataClass_ServiceTypeShifted = 1 << (DataClass_ServiceType - 1);
@@ -186,7 +186,7 @@ namespace Caesar
             ClientAccessLevel = reader.ReadBitflagUInt16(ref Bitflags);
             SecurityAccessLevel = reader.ReadBitflagUInt16(ref Bitflags);
 
-            DiagComParameters = reader.ReadBitflagSubTableAlt<ComParameter>(this, language, currentEcu);
+            DiagComParameters = reader.ReadBitflagSubTableAlt<ComParameter>(this, container);
 
             Q_Count = reader.ReadBitflagInt32(ref Bitflags);
             Q_Offset = reader.ReadBitflagInt32(ref Bitflags);
@@ -196,7 +196,7 @@ namespace Caesar
 
             InputRefNameMaybe = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
 
-            InputPreparations = reader.ReadBitflagSubTableAlt<DiagPreparation>(this, language, currentEcu);
+            InputPreparations = reader.ReadBitflagSubTableAlt<DiagPreparation>(this, container);
             
             // array of DWORDs, probably reference to elsewhere
             V_Count = reader.ReadBitflagInt32(ref Bitflags);
@@ -206,7 +206,7 @@ namespace Caesar
             RequestBytes = reader.ReadBitflagDumpWithReader(ref Bitflags, reqBytesCount);
 
             // FIXME: run it through the entire dbr cbf directory, check if any file actually has more than 1 item in ResultPresentationSet
-            OutputPreparations = reader.ReadBitflagSubTableAlt<DiagOutPreparationList>(this, language, currentEcu);
+            OutputPreparations = reader.ReadBitflagSubTableAlt<DiagOutPreparationList>(this, container);
 
 
             Field50 = reader.ReadBitflagUInt16(ref Bitflags);

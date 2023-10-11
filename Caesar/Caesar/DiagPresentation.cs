@@ -441,7 +441,7 @@ namespace Caesar
             return true;
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             if(ParentObject == null)
             {
@@ -453,9 +453,9 @@ namespace Caesar
 
             Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
 
-            Description = reader.ReadBitflagStringRef(ref Bitflags, language);
+            Description = reader.ReadBitflagStringRef(ref Bitflags, container);
 
-            Scales = reader.ReadBitflagSubTable<Scale>(this, language);
+            Scales = reader.ReadBitflagSubTable<Scale>(this, container);
 
             Unk5 = reader.ReadBitflagInt32(ref Bitflags);
             NumberChoices = reader.ReadBitflagInt32(ref Bitflags);
@@ -470,7 +470,7 @@ namespace Caesar
             UnkD = reader.ReadBitflagInt16(ref Bitflags);
             UnkE = reader.ReadBitflagInt16(ref Bitflags);
             UnkF = reader.ReadBitflagInt16(ref Bitflags);
-            DisplayedUnit = reader.ReadBitflagStringRef(ref Bitflags, language);
+            DisplayedUnit = reader.ReadBitflagStringRef(ref Bitflags, container);
 
             Unk11 = reader.ReadBitflagInt32(ref Bitflags);
             Unk12 = reader.ReadBitflagInt32(ref Bitflags);
@@ -478,7 +478,7 @@ namespace Caesar
             Unk14 = reader.ReadBitflagInt32(ref Bitflags);
 
             Unk15 = reader.ReadBitflagInt32(ref Bitflags);
-            Description2 = reader.ReadBitflagStringRef(ref Bitflags, language);
+            Description2 = reader.ReadBitflagStringRef(ref Bitflags, container);
             Unk17 = reader.ReadBitflagInt32(ref Bitflags);
             Unk18 = reader.ReadBitflagInt32(ref Bitflags);
 

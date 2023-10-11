@@ -30,8 +30,6 @@ namespace Caesar
         // language strings should be properties; resolve to actual string only when called
         public CaesarContainer(byte[] fileBytes)
         {
-            CaesarCFFHeader = new CFFHeader();
-            CaesarCTFHeader = new CTFHeader();
             Stopwatch sw = new Stopwatch();
             sw.Start();
 
@@ -195,18 +193,11 @@ namespace Caesar
             return result.ToArray();
         }
 
-        public CTFLanguage GetLanguage() 
+        CTFLanguage? language;
+        public CTFLanguage Language
         {
-            if (CaesarCTFHeader.CtfLanguages is null)
-            {
-                throw new NotImplementedException("stringtable not initialized");
-            }
-
-            if (CaesarCTFHeader.CtfLanguages.Count != 0)
-            {
-                return CaesarCTFHeader.CtfLanguages.GetObjects()[0];
-            }
-            throw new NotImplementedException("no idea how to handle missing stringtable");
+            get => language ?? throw new Exception();
+            set => language = value;
         }
 
         void ReadECU(CaesarReader fileReader) 
@@ -231,7 +222,8 @@ namespace Caesar
 
         void ReadCFFDefinition(CaesarReader fileReader)
         {
-            CaesarCFFHeader = new CFFHeader(fileReader);
+            CaesarCFFHeader = new CFFHeader(fileReader, this);
+            CaesarCTFHeader = CaesarCFFHeader.CaesarCTFHeader;
             // CaesarCFFHeader.PrintDebug();
 
             if (CaesarCFFHeader.CaesarVersion < 400) 

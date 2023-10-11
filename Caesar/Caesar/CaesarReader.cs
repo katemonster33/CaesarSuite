@@ -138,7 +138,7 @@ namespace Caesar
             return null;
         }
 
-        public CaesarTable<C>? ReadBitflagSubTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null, bool autoRead = true) where C : CaesarObject, new()
+        public CaesarTable<C>? ReadBitflagSubTable<C>(CaesarObject parentObject, CaesarContainer container, bool autoRead = true) where C : CaesarObject, new()
         {
             var output = new CaesarTable<C>();
 
@@ -149,13 +149,13 @@ namespace Caesar
             {
                 output.RelativeAddress = (int)blockOffset;
                 output.EntryCount = (int)entryCount;
-                output.Read(this, parentObject, language, currentEcu);
+                output.Read(this, parentObject, container);
                 return output;
             }
             return null;
         }
 
-        public CaesarTable<C>? ReadBitflagSubTableAlt<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null, bool autoRead = true) where C : CaesarObject, new()
+        public CaesarTable<C>? ReadBitflagSubTableAlt<C>(CaesarObject parentObject, CaesarContainer container, bool autoRead = true) where C : CaesarObject, new()
         {
             var output = new CaesarTable<C>();
 
@@ -168,14 +168,14 @@ namespace Caesar
                 output.EntryCount = (int)entryCount;
                 if (autoRead)
                 {
-                    output.Read(this, parentObject, language, currentEcu);
+                    output.Read(this, parentObject, container);
                 }
                 return output;
             }
             return null;
         }
 
-        public CaesarPool? ReadBitflagPool(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null)
+        public CaesarPool? ReadBitflagPool(CaesarObject parentObject, CaesarContainer container)
         {
             int? entryCount = ReadBitflagInt32(ref parentObject.Bitflags);
             int? blockOffset = ReadBitflagInt32(ref parentObject.Bitflags);
@@ -187,13 +187,13 @@ namespace Caesar
                     RelativeAddress = (int)blockOffset,
                     EntryCount = (int)entryCount
                 };
-                output.Read(this, parentObject, language, currentEcu);
+                output.Read(this, parentObject, container);
                 return output;
             }
             return null;
         }
 
-        public CaesarTable<C>? ReadBitflagTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null, bool autoRead = true) where C : CaesarObject, new()
+        public CaesarTable<C>? ReadBitflagTable<C>(CaesarObject parentObject, CaesarContainer container, bool autoRead = true) where C : CaesarObject, new()
         {
             int? blockOffset = ReadBitflagInt32(ref parentObject.Bitflags);
             int? entryCount = ReadBitflagInt32(ref parentObject.Bitflags);
@@ -211,19 +211,19 @@ namespace Caesar
                 };
                 if (autoRead)
                 {
-                    output.Read(this, parentObject, language, currentEcu);
+                    output.Read(this, parentObject, container);
                 }
                 return output;
             }
             return null;
         }
 
-        public CaesarStringReference? ReadBitflagStringRef(ref ulong bitFlags, CTFLanguage language)
+        public CaesarStringReference? ReadBitflagStringRef(ref ulong bitFlags, CaesarContainer container)
         {
             if (CheckAndAdvanceBitflag(ref bitFlags))
             {
                 int id = ReadInt32();
-                return new CaesarStringReference(language, id);
+                return new CaesarStringReference(container, id);
             }
             return null;
         }

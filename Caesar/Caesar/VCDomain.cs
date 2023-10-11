@@ -95,17 +95,17 @@ namespace Caesar
             return true;
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             Bitflags = reader.ReadUInt16();
 
             Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
-            Name = reader.ReadBitflagStringRef(ref Bitflags, language);
-            Description = reader.ReadBitflagStringRef(ref Bitflags, language);
+            Name = reader.ReadBitflagStringRef(ref Bitflags, container);
+            Description = reader.ReadBitflagStringRef(ref Bitflags, container);
             ReadServiceName = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
             WriteServiceName = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
 
-            VCFragments = reader.ReadBitflagSubTableAlt<VCFragment>(this, language, currentEcu);
+            VCFragments = reader.ReadBitflagSubTableAlt<VCFragment>(this, container);
             DumpSize = reader.ReadBitflagInt32(ref Bitflags);
             DefaultStringCount = reader.ReadBitflagInt32(ref Bitflags);
             StringTableOffset = reader.ReadBitflagInt32(ref Bitflags);
@@ -128,7 +128,7 @@ namespace Caesar
                     int? nameUsuallyAbsent_T = reader.ReadBitflagInt32(ref strBitflags);
                     int? offsetToBlob = reader.ReadBitflagInt32(ref strBitflags);
                     int? blobSize = reader.ReadBitflagInt32(ref strBitflags);
-                    int? valueType_T = reader.ReadBitflagInt32(ref strBitflags);
+                    CaesarStringReference? valueType_T = reader.ReadBitflagStringRef(ref strBitflags, container);
                     string? noIdeaStr1 = reader.ReadBitflagStringWithReader(ref strBitflags, stringBaseAddress);
                     int? noIdea2_T = reader.ReadBitflagInt32(ref strBitflags);
                     int? noIdea3 = reader.ReadBitflagInt16(ref strBitflags);
@@ -142,10 +142,9 @@ namespace Caesar
                         // memcpy
                     }
 
-                    string? valueType = language.GetString(valueType_T); // this value is almost always "default"; can probably let the hardcoded string pass
-                    if (valueType != null)
+                    if (valueType_T != null && valueType_T.Text != null)// this value is almost always "default"; can probably let the hardcoded string pass
                     {
-                        DefaultData.Add(new Tuple<string, byte[]>(valueType, blob));
+                        DefaultData.Add(new Tuple<string, byte[]>(valueType_T.Text, blob));
                     }
                     //Console.WriteLine($"Blob: {BitUtility.BytesToHex(blob)} @ {valueType}");
                     //Console.WriteLine($"String base address: 0x{stringBaseAddress:X}");

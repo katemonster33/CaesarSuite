@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Text.Json.Serialization;
 
 namespace Caesar
 {
@@ -14,6 +15,7 @@ namespace Caesar
         private int? StringPoolSize;
         private int? MaybeOffsetFromStringPoolBase;
         private int? StringCount;
+        [JsonIgnore]
         public List<string>? StringEntries;
 
 
@@ -67,7 +69,7 @@ namespace Caesar
             Console.WriteLine($"Language: {Qualifier} stringCount: {StringCount} stringPoolSize 0x{StringPoolSize:X}, unknowns: {LanguageIndex} {MaybeOffsetFromStringPoolBase}, base: {AbsoluteAddress:X} ");
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             Bitflags = reader.ReadUInt16();
 

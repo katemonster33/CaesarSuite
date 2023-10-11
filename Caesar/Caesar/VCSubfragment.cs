@@ -33,17 +33,17 @@ namespace Caesar
             ParentFragment = new VCFragment();
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             ulong bitflags = reader.ReadUInt16();
 
-            Name = reader.ReadBitflagStringRef(ref bitflags, language);
+            Name = reader.ReadBitflagStringRef(ref bitflags, container);
             if (ParentFragment.CCFHandle == 5) 
             {
                 // fragment should be parsed as PBSGetDumpAsStringFn, though internally we perceive this as the same
             }
             Dump = reader.ReadBitflagDumpWithReader(ref bitflags, ParentFragment.VarcodeDumpSize, AbsoluteAddress);
-            Description = reader.ReadBitflagStringRef(ref bitflags, language);
+            Description = reader.ReadBitflagStringRef(ref bitflags, container);
             QualifierUsuallyDisabled = reader.ReadBitflagStringWithReader(ref bitflags, AbsoluteAddress);
             Unk3 = reader.ReadBitflagInt32(ref bitflags);
             Unk4 = reader.ReadBitflagInt16(ref bitflags);

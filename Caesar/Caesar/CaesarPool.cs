@@ -26,7 +26,7 @@ namespace Caesar
             return true;
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             Indices.Clear();
             for (int index = 0; index < EntryCount; index++)

@@ -219,13 +219,13 @@ namespace Caesar
             return true;
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             Bitflags = reader.ReadUInt32();
             // Console.WriteLine($"Fragment new bitflag @ 0x{fragmentBitflags:X}");
 
-            Name = reader.ReadBitflagStringRef(ref Bitflags, language);
-            Description = reader.ReadBitflagStringRef(ref Bitflags, language);
+            Name = reader.ReadBitflagStringRef(ref Bitflags, container);
+            Description = reader.ReadBitflagStringRef(ref Bitflags, container);
             ReadAccessLevel = reader.ReadBitflagUInt8(ref Bitflags);
             WriteAccessLevel = reader.ReadBitflagUInt8(ref Bitflags);
             ByteOrder = reader.ReadBitflagUInt16(ref Bitflags);
@@ -238,7 +238,7 @@ namespace Caesar
             VarcodeDumpSize = reader.ReadBitflagInt32(ref Bitflags);
             VarcodeDump = reader.ReadBitflagDumpWithReader(ref Bitflags, VarcodeDumpSize, AbsoluteAddress);
 
-            Subfragments = reader.ReadBitflagSubTable<VCSubfragment>(this, language, currentEcu);
+            Subfragments = reader.ReadBitflagSubTable<VCSubfragment>(this, container);
 
             Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
 

@@ -10,6 +10,7 @@ namespace Caesar
 {
     public abstract class CaesarObject
     {
+        protected CaesarContainer? Container;
         [JsonIgnore]
         protected CaesarObject? ParentObject { get; set; }
 
@@ -44,9 +45,10 @@ namespace Caesar
             return null;
         }
 
-        public bool Read(CaesarReader reader, CaesarObject? parentObject, CTFLanguage language, ECU? currentEcu)
+        public bool Read(CaesarReader reader, CaesarObject? parentObject, CaesarContainer container)
         {
             ParentObject = parentObject;
+            Container = container;
             if(!ReadHeader(reader))
             {
                 return false;
@@ -56,12 +58,12 @@ namespace Caesar
                 AbsoluteAddress = (parentObject != null ? parentObject.AbsoluteAddress : 0) + RelativeAddress;
                 long nextHeaderOffset = reader.BaseStream.Position;
                 reader.BaseStream.Seek(AbsoluteAddress, SeekOrigin.Begin);
-                ReadData(reader, language, currentEcu);
+                ReadData(reader, container);
                 reader.BaseStream.Seek(nextHeaderOffset, SeekOrigin.Begin);
             }
             return true;
         }
 
-        protected abstract void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu);
+        protected abstract void ReadData(CaesarReader reader, CaesarContainer container);
     }
 }

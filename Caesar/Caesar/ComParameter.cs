@@ -60,7 +60,7 @@ namespace Caesar
             Console.WriteLine($"Pos 0x{AbsoluteAddress:X}");
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             Bitflags = reader.ReadUInt16();
             ComParamIndex = reader.ReadBitflagInt16(ref Bitflags);

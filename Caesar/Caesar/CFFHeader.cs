@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,7 +12,8 @@ namespace Caesar
     {
         public int? CaesarVersion;
         public int? GpdVersion;
-        public int? CtfOffset; // nCtfHeaderRpos
+        [JsonIgnore]
+        public CTFHeader CaesarCTFHeader = new CTFHeader();
         public int? StringPoolSize;
         private int? DscOffset;
         private int? DscCount;
@@ -20,19 +22,19 @@ namespace Caesar
         public string? GpdVersionString;
         public string? XmlString;
 
-        [Newtonsoft.Json.JsonIgnore]
+        [JsonIgnore]
         public int CffHeaderSize;
-        [Newtonsoft.Json.JsonIgnore]
+        [JsonIgnore]
         public long BaseAddress;
 
-        public CTFHeader CaesarCTFHeader = new CTFHeader();
 
+        [JsonIgnore]
         public CaesarTable<ECU> CaesarECUs;
 
         public long DscBlockOffset;
         private int DscBlockSize;
 
-        [Newtonsoft.Json.JsonIgnore]
+        [JsonIgnore]
         public byte[] DSCPool = new byte[] { };
 
         // DIIAddCBFFile
@@ -40,7 +42,7 @@ namespace Caesar
         public CFFHeader() 
         { }
 
-        public CFFHeader(CaesarReader reader) 
+        public CFFHeader(CaesarReader reader, CaesarContainer container) 
         {
             reader.BaseStream.Seek(StubHeader.StubHeaderSize, SeekOrigin.Begin);
             CffHeaderSize = reader.ReadInt32();
@@ -51,8 +53,8 @@ namespace Caesar
 
             CaesarVersion = reader.ReadBitflagInt32(ref Bitflags);
             GpdVersion = reader.ReadBitflagInt32(ref Bitflags);
-            CaesarECUs = reader.ReadBitflagSubTableAlt<ECU>(this, new CTFLanguage(), null, false) ?? new CaesarTable<ECU>();
-            CaesarCTFHeader.Read(reader, this, new CTFLanguage(), null);
+            CaesarECUs = reader.ReadBitflagSubTableAlt<ECU>(this, container, false) ?? new CaesarTable<ECU>();
+            CaesarCTFHeader.Read(reader, this, container);
             StringPoolSize = reader.ReadBitflagInt32(ref Bitflags);
             DscOffset = reader.ReadBitflagInt32(ref Bitflags);
             DscCount = reader.ReadBitflagInt32(ref Bitflags);
@@ -73,9 +75,18 @@ namespace Caesar
                     DSCPool = reader.ReadBytes(DscBlockSize);
                 }
             }
-            CaesarECUs.Read(reader, this, CaesarCTFHeader.CtfLanguages.Count > 0 ? CaesarCTFHeader.CtfLanguages.GetObjects()[0] : new CTFLanguage(), null);
-
             CaesarCTFHeader.LoadStrings(reader, CffHeaderSize);
+
+            if (CaesarCTFHeader.CtfLanguages.Count != 0)
+            {
+                container.Language = CaesarCTFHeader.CtfLanguages.GetObjects()[0];
+            }
+            else
+            {
+                throw new NotImplementedException("no idea how to handle missing stringtable");
+            }
+            CaesarECUs.Read(reader, this, container);
+
         }
 
         public void PrintDebug()
@@ -83,7 +94,7 @@ namespace Caesar
             Console.WriteLine($"{nameof(CaesarVersion)} : {CaesarVersion}");
             Console.WriteLine($"{nameof(GpdVersion)} : {GpdVersion}");
             Console.WriteLine($"{nameof(CaesarECUs)} : {CaesarECUs}");
-            Console.WriteLine($"{nameof(CtfOffset)} : 0x{CtfOffset:X}");
+            Console.WriteLine($"{nameof(CaesarCTFHeader)} : {CaesarCTFHeader}");
             Console.WriteLine($"{nameof(StringPoolSize)} : {StringPoolSize} 0x{StringPoolSize:X}");
             
             Console.WriteLine($"{nameof(DscEntrySize)} : {DscEntrySize}");
@@ -96,7 +107,7 @@ namespace Caesar
             Console.WriteLine($"{nameof(DscBlockSize)} : {DscCount}");
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             throw new NotImplementedException();
         }

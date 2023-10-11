@@ -340,12 +340,12 @@ namespace Caesar
             return true;
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             Bitflags = reader.ReadUInt32();
 
             Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
-            Name = reader.ReadBitflagStringRef(ref Bitflags, language);
+            Name = reader.ReadBitflagStringRef(ref Bitflags, container);
             Unk1 = reader.ReadBitflagUInt8(ref Bitflags);
             Unk2 = reader.ReadBitflagUInt8(ref Bitflags);
             AlternativeBitWidth = reader.ReadBitflagInt32(ref Bitflags);

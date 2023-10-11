@@ -63,11 +63,9 @@ namespace Caesar
         private int Index;
 
         public List<ComParameter> CommunicationParameters = new List<ComParameter>();
-        private CTFLanguage Language;
 
         public void Restore(CTFLanguage language) 
         {
-            Language = language;
             foreach (ComParameter cp in CommunicationParameters) 
             {
                 cp.Restore(language);
@@ -78,14 +76,12 @@ namespace Caesar
         {
             Index = -1;
             BaseAddress = -1;
-            Language = new CTFLanguage();
         }
 
-        public ECUInterfaceSubtype(CaesarReader reader, long baseAddress, int index, CTFLanguage language)
+        public ECUInterfaceSubtype(CaesarReader reader, long baseAddress, int index)
         {
             Index = index;
             BaseAddress = baseAddress;
-            Language = language;
             reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
             // we can now properly operate on the interface block
             ulong ctBitflags = reader.ReadUInt32();

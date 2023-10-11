@@ -21,23 +21,15 @@ namespace Caesar
 
         public List<string> ComParameterNames = new List<string>();
 
-        private CTFLanguage Language;
         private long BaseAddress;
-
-        public void Restore(CTFLanguage language) 
-        {
-            Language = language;
-        }
 
         public ECUInterface() 
         {
-            Language = new CTFLanguage();
             BaseAddress = -1;
         }
 
-        public ECUInterface(CaesarReader reader, long baseAddress)
+        public ECUInterface(CaesarReader reader, CaesarContainer container, long baseAddress)
         {
-            Language = new CTFLanguage();
             BaseAddress = baseAddress;
             reader.BaseStream.Seek(BaseAddress, SeekOrigin.Begin);
 
@@ -45,8 +37,8 @@ namespace Caesar
             ulong interfaceBitflags = reader.ReadUInt32();
 
             Qualifier = reader.ReadBitflagStringWithReader(ref interfaceBitflags, BaseAddress);
-            Name = reader.ReadBitflagStringRef(ref interfaceBitflags, Language);
-            Description = reader.ReadBitflagStringRef(ref interfaceBitflags, Language);
+            Name = reader.ReadBitflagStringRef(ref interfaceBitflags, container);
+            Description = reader.ReadBitflagStringRef(ref interfaceBitflags, container);
             VersionString = reader.ReadBitflagStringWithReader(ref interfaceBitflags, BaseAddress);
             Version = reader.ReadBitflagInt32(ref interfaceBitflags);
             ComParamCount = reader.ReadBitflagInt32(ref interfaceBitflags);

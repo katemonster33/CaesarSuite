@@ -62,18 +62,18 @@ namespace Caesar
             return true;
         }
 
-        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
-            ulong bitflags = reader.ReadUInt16();
+            Bitflags = reader.ReadUInt16();
 
-            Qualifier = reader.ReadBitflagStringWithReader(ref bitflags, AbsoluteAddress);
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
 
-            Description = reader.ReadBitflagStringRef(ref bitflags, language);
-            Reference = reader.ReadBitflagStringRef(ref bitflags, language);
+            Description = reader.ReadBitflagStringRef(ref Bitflags, container);
+            Reference = reader.ReadBitflagStringRef(ref Bitflags, container);
 #if DEBUG
-            if (bitflags > 0)
+            if (Bitflags > 0)
             {
-                Console.WriteLine($"DTC {Qualifier} has additional unparsed fields : 0x{bitflags:X}");
+                Console.WriteLine($"DTC {Qualifier} has additional unparsed fields : 0x{Bitflags:X}");
             }
 #endif
         }
