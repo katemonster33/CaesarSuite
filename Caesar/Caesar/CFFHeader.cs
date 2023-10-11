@@ -7,12 +7,10 @@ using System.Threading.Tasks;
 
 namespace Caesar
 {
-    public class CFFHeader
+    public class CFFHeader : CaesarObject
     {
         public int? CaesarVersion;
         public int? GpdVersion;
-        public int? EcuCount;
-        public int? EcuOffset;
         public int? CtfOffset; // nCtfHeaderRpos
         public int? StringPoolSize;
         private int? DscOffset;
@@ -26,6 +24,10 @@ namespace Caesar
         public int CffHeaderSize;
         [Newtonsoft.Json.JsonIgnore]
         public long BaseAddress;
+
+        public CTFHeader CaesarCTFHeader = new CTFHeader();
+
+        public CaesarTable<ECU> CaesarECUs;
 
         public long DscBlockOffset;
         private int DscBlockSize;
@@ -44,23 +46,21 @@ namespace Caesar
             CffHeaderSize = reader.ReadInt32();
 
             BaseAddress = reader.BaseStream.Position;
+            AbsoluteAddress = (int)BaseAddress;
+            Bitflags = reader.ReadUInt16();
 
-            ulong bitFlags = reader.ReadUInt16();
+            CaesarVersion = reader.ReadBitflagInt32(ref Bitflags);
+            GpdVersion = reader.ReadBitflagInt32(ref Bitflags);
+            CaesarECUs = reader.ReadBitflagSubTableAlt<ECU>(this, new CTFLanguage(), null, false) ?? new CaesarTable<ECU>();
+            CaesarCTFHeader.Read(reader, this, new CTFLanguage(), null);
+            StringPoolSize = reader.ReadBitflagInt32(ref Bitflags);
+            DscOffset = reader.ReadBitflagInt32(ref Bitflags);
+            DscCount = reader.ReadBitflagInt32(ref Bitflags);
+            DscEntrySize = reader.ReadBitflagInt32(ref Bitflags);
 
-            CaesarVersion = reader.ReadBitflagInt32(ref bitFlags);
-            GpdVersion = reader.ReadBitflagInt32(ref bitFlags);
-            EcuCount = reader.ReadBitflagInt32(ref bitFlags);
-            EcuOffset = reader.ReadBitflagInt32(ref bitFlags);
-            CtfOffset = reader.ReadBitflagInt32(ref bitFlags);
-            StringPoolSize = reader.ReadBitflagInt32(ref bitFlags);
-            DscOffset = reader.ReadBitflagInt32(ref bitFlags);
-            DscCount = reader.ReadBitflagInt32(ref bitFlags);
-            DscEntrySize = reader.ReadBitflagInt32(ref bitFlags);
-
-            CbfVersionString = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
-            GpdVersionString = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
-            XmlString = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
-
+            CbfVersionString = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
+            GpdVersionString = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
+            XmlString = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
 
             if (StringPoolSize != null)
             {
@@ -73,14 +73,16 @@ namespace Caesar
                     DSCPool = reader.ReadBytes(DscBlockSize);
                 }
             }
+            CaesarECUs.Read(reader, this, CaesarCTFHeader.CtfLanguages.Count > 0 ? CaesarCTFHeader.CtfLanguages.GetObjects()[0] : new CTFLanguage(), null);
+
+            CaesarCTFHeader.LoadStrings(reader, CffHeaderSize);
         }
 
-        public void PrintDebug() 
+        public void PrintDebug()
         {
             Console.WriteLine($"{nameof(CaesarVersion)} : {CaesarVersion}");
             Console.WriteLine($"{nameof(GpdVersion)} : {GpdVersion}");
-            Console.WriteLine($"{nameof(EcuCount)} : {EcuCount}");
-            Console.WriteLine($"{nameof(EcuOffset)} : {EcuOffset} 0x{EcuOffset:X}");
+            Console.WriteLine($"{nameof(CaesarECUs)} : {CaesarECUs}");
             Console.WriteLine($"{nameof(CtfOffset)} : 0x{CtfOffset:X}");
             Console.WriteLine($"{nameof(StringPoolSize)} : {StringPoolSize} 0x{StringPoolSize:X}");
             
@@ -92,6 +94,11 @@ namespace Caesar
             Console.WriteLine($"{nameof(DscBlockOffset)} : {DscBlockOffset} 0x{DscBlockOffset:X}");
             Console.WriteLine($"{nameof(DscCount)} : {DscCount}");
             Console.WriteLine($"{nameof(DscBlockSize)} : {DscCount}");
+        }
+
+        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        {
+            throw new NotImplementedException();
         }
     }
 }

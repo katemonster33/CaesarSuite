@@ -51,7 +51,6 @@ namespace Caesar
 
                 ReadCFFDefinition(reader);
                 // language is the highest priority since all our strings come from it
-                ReadCTF(reader);
                 ReadECU(reader);
 
                 //Restore now resolves references and performs post-read operations so we must call it here.
@@ -75,7 +74,7 @@ namespace Caesar
             // at this point, the container needs to restore its internal object references before it is fully usable
             if (container != null)
             {
-                CTFLanguage language = container.CaesarCTFHeader.CtfLanguages[0];
+                CTFLanguage language = container.CaesarCTFHeader.CtfLanguages.GetObjects()[0];
                 foreach (ECU ecu in container.CaesarECUs)
                 {
                     ecu.Restore(language, container);
@@ -205,38 +204,28 @@ namespace Caesar
 
             if (CaesarCTFHeader.CtfLanguages.Count != 0)
             {
-                return CaesarCTFHeader.CtfLanguages[0];
+                return CaesarCTFHeader.CtfLanguages.GetObjects()[0];
             }
             throw new NotImplementedException("no idea how to handle missing stringtable");
         }
 
         void ReadECU(CaesarReader fileReader) 
         {
-            CaesarECUs = new List<ECU>();
+            CaesarECUs = new List<ECU>(CaesarCFFHeader.CaesarECUs.GetObjects());
             // read all ecu definitions
-            if (CaesarCFFHeader.EcuOffset != null && CaesarCFFHeader.EcuCount != null)
-            {
-                long ecuTableOffset = (long)CaesarCFFHeader.EcuOffset + CaesarCFFHeader.BaseAddress;
+            //if (CaesarCFFHeader.EcuOffset != null && CaesarCFFHeader.EcuCount != null)
+            //{
+            //    long ecuTableOffset = (long)CaesarCFFHeader.EcuOffset + CaesarCFFHeader.BaseAddress;
 
-                for (int ecuIndex = 0; ecuIndex < CaesarCFFHeader.EcuCount; ecuIndex++)
-                {
-                    // seek to an entry the ecu offsets table
-                    fileReader.BaseStream.Seek(ecuTableOffset + (ecuIndex * 4), SeekOrigin.Begin);
-                    // read the offset to the ecu entry, then seek to the actual address
-                    int offsetToActualEcuEntry = fileReader.ReadInt32();
-                    CaesarECUs.Add(new ECU(fileReader, GetLanguage(), CaesarCFFHeader, ecuTableOffset + offsetToActualEcuEntry, this));
-                }
-            }
-        }
-
-        void ReadCTF(CaesarReader fileReader)
-        {
-            // parse CTF language stuff
-            // approx 0x1304 / 4 number of strings?
-            Debug.Assert(CaesarCFFHeader.CtfOffset != null, "No idea how to handle nonexistent ctf header");
-
-            long ctfOffset = CaesarCFFHeader.BaseAddress + (long)CaesarCFFHeader.CtfOffset;
-            CaesarCTFHeader = new CTFHeader(fileReader, ctfOffset, CaesarCFFHeader.CffHeaderSize);
+            //    for (int ecuIndex = 0; ecuIndex < CaesarCFFHeader.EcuCount; ecuIndex++)
+            //    {
+            //        // seek to an entry the ecu offsets table
+            //        fileReader.BaseStream.Seek(ecuTableOffset + (ecuIndex * 4), SeekOrigin.Begin);
+            //        // read the offset to the ecu entry, then seek to the actual address
+            //        int offsetToActualEcuEntry = fileReader.ReadInt32();
+            //        CaesarECUs.Add(new ECU(fileReader, GetLanguage(), CaesarCFFHeader, ecuTableOffset + offsetToActualEcuEntry, this));
+            //    }
+            //}
         }
 
 

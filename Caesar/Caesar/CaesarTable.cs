@@ -19,7 +19,7 @@ namespace Caesar
 
         public int? BlockSize { get; set; }
 
-        protected List<T> Objects { get; set; } = new List<T>();
+        public List<T> Objects { get; set; } = new List<T>();
 
         public List<T> GetObjects()
         {
@@ -53,7 +53,7 @@ namespace Caesar
 
         protected override bool ReadHeader(CaesarReader reader)
         {
-            return true;
+            return RelativeAddress != -1;
         }
 
         protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
@@ -70,7 +70,7 @@ namespace Caesar
 
         public CaesarTable()
         {
-            RelativeAddress = 0;
+            RelativeAddress = -1;
             EntryCount = 0;
         }
     }

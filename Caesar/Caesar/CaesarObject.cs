@@ -39,11 +39,12 @@ namespace Caesar
                 {
                     return (T)parent;
                 }
+                parent = parent.ParentObject;
             }
             return null;
         }
 
-        public bool Read(CaesarReader reader, CaesarObject parentObject, CTFLanguage language, ECU? currentEcu)
+        public bool Read(CaesarReader reader, CaesarObject? parentObject, CTFLanguage language, ECU? currentEcu)
         {
             ParentObject = parentObject;
             if(!ReadHeader(reader))
@@ -52,7 +53,7 @@ namespace Caesar
             }
             if(RelativeAddress != 0)
             {
-                AbsoluteAddress = parentObject.AbsoluteAddress + RelativeAddress;
+                AbsoluteAddress = (parentObject != null ? parentObject.AbsoluteAddress : 0) + RelativeAddress;
                 long nextHeaderOffset = reader.BaseStream.Position;
                 reader.BaseStream.Seek(AbsoluteAddress, SeekOrigin.Begin);
                 ReadData(reader, language, currentEcu);

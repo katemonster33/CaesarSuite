@@ -52,9 +52,8 @@ namespace Caesar
         public ushort? ClientAccessLevel;
         public ushort? SecurityAccessLevel;
 
-        private int? T_ComParam_Count;
-        private int? T_ComParam_Offset;
-
+        public CaesarTable<ComParameter>? DiagComParameters;
+        
         private int? Q_Count;
         private int? Q_Offset;
 
@@ -97,7 +96,6 @@ namespace Caesar
         // these are inlined preparations
         public CaesarTable<DiagPreparation>? InputPreparations;
         public CaesarTable<DiagOutPreparationList>? OutputPreparations;
-        public List<ComParameter> DiagComParameters = new List<ComParameter>();
 
         [Newtonsoft.Json.JsonIgnore]
         public ECU ParentECU;
@@ -135,7 +133,7 @@ namespace Caesar
 
         public void PrintDebug() 
         {
-            Console.WriteLine($"{Qualifier} - ReqBytes: {RequestBytes}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, ComParams: {T_ComParam_Count}, Preparation: {InputPreparations}, V: {V_Count}, OutPres: {OutputPreparations}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodeCount}, field50: {Field50}");
+            Console.WriteLine($"{Qualifier} - ReqBytes: {RequestBytes}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, ComParams: {DiagComParameters}, Preparation: {InputPreparations}, V: {V_Count}, OutPres: {OutputPreparations}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodeCount}, field50: {Field50}");
             Console.WriteLine($"BaseAddress @ 0x{AbsoluteAddress:X}, NR: {NegativeResponseName}");
             Console.WriteLine($"V @ 0x{AbsoluteAddress + V_Offset:X}, count: {V_Count}");
         }
@@ -188,8 +186,7 @@ namespace Caesar
             ClientAccessLevel = reader.ReadBitflagUInt16(ref Bitflags);
             SecurityAccessLevel = reader.ReadBitflagUInt16(ref Bitflags);
 
-            T_ComParam_Count = reader.ReadBitflagInt32(ref Bitflags);
-            T_ComParam_Offset = reader.ReadBitflagInt32(ref Bitflags);
+            DiagComParameters = reader.ReadBitflagSubTableAlt<ComParameter>(this, language, currentEcu);
 
             Q_Count = reader.ReadBitflagInt32(ref Bitflags);
             Q_Offset = reader.ReadBitflagInt32(ref Bitflags);
@@ -236,20 +233,6 @@ namespace Caesar
             Z_Count = reader.ReadBitflagInt32(ref Bitflags);
             Z_Offset = reader.ReadBitflagInt32(ref Bitflags);
 
-            DiagComParameters = new List<ComParameter>();
-            if (T_ComParam_Offset != null && T_ComParam_Count != null)
-            {
-                long comParamTableBaseAddress = AbsoluteAddress + (long)T_ComParam_Offset;
-                for (int cpIndex = 0; cpIndex < T_ComParam_Count; cpIndex++)
-                {
-                    reader.BaseStream.Seek(comParamTableBaseAddress + (cpIndex * 4), SeekOrigin.Begin);
-                    int resultCpOffset = reader.ReadInt32();
-                    long cpEntryBaseAddress = comParamTableBaseAddress + resultCpOffset;
-                    ComParameter cp = new ComParameter(reader, cpEntryBaseAddress, ParentECU, language);
-                    DiagComParameters.Add(cp);
-                }
-            }
-
             // DJ_Zugriffsberechtigung_Abgleich
             // DJ_Zugriffsberechtigung
             // DT_Abgasklappe_kontinuierlich
@@ -278,7 +261,7 @@ namespace Caesar
             //Console.WriteLine($"{qualifierName} - O: {RequestBytes_Count}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, T: {T_Count}, U: {U_Count}, V: {V_Count}, W: {W_Count}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodeCount}");
 
 
-            byte[] dscPool = ParentECU.ParentContainer.CaesarCFFHeader.DSCPool;
+            byte[] dscPool = ParentECU.CFFHeader.DSCPool;
             if (DiagServiceCodeOffset != null && DiagServiceCodeCount != null)
             {
                 long dscTableBaseAddress = AbsoluteAddress + (long)DiagServiceCodeOffset;
@@ -300,7 +283,7 @@ namespace Caesar
                         if (dscPoolOffset != null)
                         {
                             dscPoolReader.BaseStream.Seek((int)dscPoolOffset * 8, SeekOrigin.Begin);
-                            long dscRecordOffset = dscPoolReader.ReadInt32() + ParentECU.ParentContainer.CaesarCFFHeader.DscBlockOffset;
+                            long dscRecordOffset = dscPoolReader.ReadInt32() + ParentECU.CFFHeader.DscBlockOffset;
                             int dscRecordSize = dscPoolReader.ReadInt32();
 
                             reader.BaseStream.Seek(dscRecordOffset, SeekOrigin.Begin);

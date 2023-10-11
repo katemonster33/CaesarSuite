@@ -41,7 +41,7 @@ namespace Caesar
             Debug.Assert(CaesarFlashHeader.CTFHeaderTable != null, "No idea how to handle nonexistent ctf header");
             
             long ctfOffset = CaesarFlashHeader.BaseAddress + (long)CaesarFlashHeader.CTFHeaderTable;
-            CaesarCTFHeader = new CTFHeader(fileReader, ctfOffset, CaesarFlashHeader.CffHeaderSize);
+            ///CaesarCTFHeader = new CTFHeader(fileReader, ctfOffset, CaesarFlashHeader.CffHeaderSize);
         }
 
 

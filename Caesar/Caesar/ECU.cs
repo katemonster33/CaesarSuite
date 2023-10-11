@@ -55,19 +55,17 @@ namespace Caesar
         public List<ECUInterfaceSubtype> ECUInterfaceSubtypes = new List<ECUInterfaceSubtype>();
 
 
-        private long BaseAddress;
         [Newtonsoft.Json.JsonIgnore]
         public CTFLanguage Language;
 
-        [Newtonsoft.Json.JsonIgnore]
-        public CaesarContainer ParentContainer;
+        [JsonIgnore]
+        public CFFHeader CFFHeader;
 
         byte[] cachedUnkPool = new byte[] { };
 
         public void Restore(CTFLanguage language, CaesarContainer parentContainer)
         {
             Language = language;
-            ParentContainer = parentContainer;
 
             if (GlobalVCDs != null)
             {
@@ -117,116 +115,7 @@ namespace Caesar
             GlobalDTCs = new CaesarTable<DTC>();
             GlobalEnvironmentContexts = new CaesarTable<EnvironmentContext>();
             Language = new CTFLanguage();
-            ParentContainer = new CaesarContainer();
-        }
-
-        public ECU(CaesarReader reader, CTFLanguage language, CFFHeader header, long baseAddress, CaesarContainer parentContainer)
-        {
-            ParentContainer = parentContainer;
-            BaseAddress = baseAddress;
-            RelativeAddress = (int)BaseAddress;
-            Language = language;
-            // Read 32+16 bits
-            Bitflags = reader.ReadUInt32();
-            Bitflags |= (ulong)reader.ReadUInt16() << 32;
-
-            // Console.WriteLine($"ECU bitflags: {ecuBitFlags:X}");
-
-            // advancing forward to ecuBase + 10
-            int ecuHdrIdk1 = reader.ReadInt32(); // no idea
-            // Console.WriteLine($"Skipping: {ecuHdrIdk1:X8}");
-
-            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
-            EcuName = reader.ReadBitflagStringRef(ref Bitflags, language);
-            EcuDescription = reader.ReadBitflagStringRef(ref Bitflags, language);
-            EcuXmlVersion = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
-            InterfaceBlockCount = reader.ReadBitflagInt32(ref Bitflags);
-            InterfaceTableOffset = reader.ReadBitflagInt32(ref Bitflags);
-            SubinterfacesCount = reader.ReadBitflagInt32(ref Bitflags);
-            SubinterfacesOffset = reader.ReadBitflagInt32(ref Bitflags);
-            EcuClassName = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
-            UnkStr7 = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
-            UnkStr8 = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
-
-            // Console.WriteLine($"{nameof(dataBufferOffsetRelativeToFile)} : 0x{dataBufferOffsetRelativeToFile:X}");
-
-            IgnitionRequired = reader.ReadBitflagInt16(ref Bitflags);
-            Unk2 = reader.ReadBitflagInt16(ref Bitflags);
-            UnkBlockCount = reader.ReadBitflagInt16(ref Bitflags);
-            UnkBlockOffset = reader.ReadBitflagInt32(ref Bitflags);
-            EcuSgmlSource = reader.ReadBitflagInt16(ref Bitflags);
-            Unk6RelativeOffset = reader.ReadBitflagInt32(ref Bitflags);
-
-            int dataBufferOffsetRelativeToFile = (header.StringPoolSize ?? 0) + StubHeader.StubHeaderSize + header.CffHeaderSize + 4;
-            AbsoluteAddress = (int)dataBufferOffsetRelativeToFile;
-
-            ECUVariants = reader.ReadBitflagTable<ECUVariant>(this, language, this);
-
-            GlobalDiagServices = reader.ReadBitflagTable<DiagService>(this, language, this);
-
-            GlobalDTCs = reader.ReadBitflagTable<DTC>(this, language, this);
-
-            GlobalEnvironmentContexts = reader.ReadBitflagTable<EnvironmentContext>(this, language, this);
-
-            GlobalVCDs = reader.ReadBitflagTable<VCDomain>(this, language, this);
-
-            GlobalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, language, this);
-
-            GlobalInternalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, language, this);
-
-            Unk_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
-            Unk_EntryCount = reader.ReadBitflagInt32(ref Bitflags);
-            Unk_EntrySize = reader.ReadBitflagInt32(ref Bitflags);
-            Unk_BlockSize = reader.ReadBitflagInt32(ref Bitflags);
-
-            Unk39 = reader.ReadBitflagInt32(ref Bitflags);
-
-            // read ecu's supported interfaces and subtypes
-
-            ECUInterfaces = new List<ECUInterface>();
-            if (InterfaceTableOffset != null && InterfaceBlockCount != null)
-            {
-                // try to read interface block from the interface buffer table
-                // this address is relative to the definitions block
-                long interfaceTableAddress = BaseAddress + (int)InterfaceTableOffset;
-                // Console.WriteLine($"Interface table address: {interfaceTableAddress:X}, given offset: {interfaceTableOffset:X}");
-
-                for (int interfaceBufferIndex = 0; interfaceBufferIndex < InterfaceBlockCount; interfaceBufferIndex++)
-                {
-                    // Console.WriteLine($"Parsing interface {interfaceBufferIndex + 1}/{interfaceBlockCount}");
-
-                    // find our interface block offset
-                    reader.BaseStream.Seek(interfaceTableAddress + (interfaceBufferIndex * 4), SeekOrigin.Begin);
-                    // seek to the actual block (ambiguity: is this relative to the interface table or the current array?)
-                    int interfaceBlockOffset = reader.ReadInt32();
-
-                    long ecuInterfaceBaseAddress = interfaceTableAddress + interfaceBlockOffset;
-
-                    ECUInterface ecuInterface = new ECUInterface(reader, ecuInterfaceBaseAddress);
-                    ECUInterfaces.Add(ecuInterface);
-                }
-            }
-            // try to read interface subtype block from the interface buffer table
-            // this address is relative to the definitions block
-            ECUInterfaceSubtypes = new List<ECUInterfaceSubtype>();
-            if (SubinterfacesOffset != null && SubinterfacesCount != null)
-            {
-                long ctTableAddress = BaseAddress + (int)SubinterfacesOffset;
-                // Console.WriteLine($"Interface subtype table address: {ctTableAddress:X}, given offset: {ecuChildTypesOffset:X}");
-                for (int ctBufferIndex = 0; ctBufferIndex < SubinterfacesCount; ctBufferIndex++)
-                {
-                    // Console.WriteLine($"Parsing interface subtype {ctBufferIndex + 1}/{ecuNumberOfEcuChildTypes}");
-                    // find our ct block offset
-                    reader.BaseStream.Seek(ctTableAddress + (ctBufferIndex * 4), SeekOrigin.Begin);
-                    // seek to the actual block (ambiguity: is this relative to the ct table or the current array?)
-                    int actualBlockOffset = reader.ReadInt32();
-                    long ctBaseAddress = ctTableAddress + actualBlockOffset;
-
-                    ECUInterfaceSubtype ecuInterfaceSubtype = new ECUInterfaceSubtype(reader, ctBaseAddress, ctBufferIndex, language);
-                    ECUInterfaceSubtypes.Add(ecuInterfaceSubtype);
-                }
-            }
-            //PrintDebug();
+            CFFHeader = new CFFHeader();
         }
 
         //public void CreateUnk(BinaryReader reader, CTFLanguage language)
@@ -280,7 +169,109 @@ namespace Caesar
 
         protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
         {
-            throw new NotImplementedException();
+            CFFHeader = GetParentByType<CFFHeader>() ?? new CFFHeader();
+            // Read 32+16 bits
+            Bitflags = reader.ReadUInt32();
+            Bitflags |= (ulong)reader.ReadUInt16() << 32;
+
+            // Console.WriteLine($"ECU bitflags: {ecuBitFlags:X}");
+
+            // advancing forward to ecuBase + 10
+            int ecuHdrIdk1 = reader.ReadInt32(); // no idea
+            // Console.WriteLine($"Skipping: {ecuHdrIdk1:X8}");
+
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+            EcuName = reader.ReadBitflagStringRef(ref Bitflags, language);
+            EcuDescription = reader.ReadBitflagStringRef(ref Bitflags, language);
+            EcuXmlVersion = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+            InterfaceBlockCount = reader.ReadBitflagInt32(ref Bitflags);
+            InterfaceTableOffset = reader.ReadBitflagInt32(ref Bitflags);
+            SubinterfacesCount = reader.ReadBitflagInt32(ref Bitflags);
+            SubinterfacesOffset = reader.ReadBitflagInt32(ref Bitflags);
+            EcuClassName = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+            UnkStr7 = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+            UnkStr8 = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+
+            // Console.WriteLine($"{nameof(dataBufferOffsetRelativeToFile)} : 0x{dataBufferOffsetRelativeToFile:X}");
+
+            IgnitionRequired = reader.ReadBitflagInt16(ref Bitflags);
+            Unk2 = reader.ReadBitflagInt16(ref Bitflags);
+            UnkBlockCount = reader.ReadBitflagInt16(ref Bitflags);
+            UnkBlockOffset = reader.ReadBitflagInt32(ref Bitflags);
+            EcuSgmlSource = reader.ReadBitflagInt16(ref Bitflags);
+            Unk6RelativeOffset = reader.ReadBitflagInt32(ref Bitflags);
+
+            int oldAddress = AbsoluteAddress;
+            int dataBufferOffsetRelativeToFile = (CFFHeader.StringPoolSize ?? 0) + StubHeader.StubHeaderSize + CFFHeader.CffHeaderSize + 4;
+            AbsoluteAddress = (int)dataBufferOffsetRelativeToFile;
+
+            ECUVariants = reader.ReadBitflagTable<ECUVariant>(this, language, this);
+
+            GlobalDiagServices = reader.ReadBitflagTable<DiagService>(this, language, this);
+
+            GlobalDTCs = reader.ReadBitflagTable<DTC>(this, language, this);
+
+            GlobalEnvironmentContexts = reader.ReadBitflagTable<EnvironmentContext>(this, language, this);
+
+            GlobalVCDs = reader.ReadBitflagTable<VCDomain>(this, language, this);
+
+            GlobalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, language, this);
+
+            GlobalInternalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, language, this);
+
+            Unk_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
+            Unk_EntryCount = reader.ReadBitflagInt32(ref Bitflags);
+            Unk_EntrySize = reader.ReadBitflagInt32(ref Bitflags);
+            Unk_BlockSize = reader.ReadBitflagInt32(ref Bitflags);
+
+            Unk39 = reader.ReadBitflagInt32(ref Bitflags);
+
+            // read ecu's supported interfaces and subtypes
+
+            ECUInterfaces = new List<ECUInterface>();
+            if (InterfaceTableOffset != null && InterfaceBlockCount != null)
+            {
+                // try to read interface block from the interface buffer table
+                // this address is relative to the definitions block
+                long interfaceTableAddress = oldAddress + (int)InterfaceTableOffset;
+                // Console.WriteLine($"Interface table address: {interfaceTableAddress:X}, given offset: {interfaceTableOffset:X}");
+
+                for (int interfaceBufferIndex = 0; interfaceBufferIndex < InterfaceBlockCount; interfaceBufferIndex++)
+                {
+                    // Console.WriteLine($"Parsing interface {interfaceBufferIndex + 1}/{interfaceBlockCount}");
+
+                    // find our interface block offset
+                    reader.BaseStream.Seek(interfaceTableAddress + (interfaceBufferIndex * 4), SeekOrigin.Begin);
+                    // seek to the actual block (ambiguity: is this relative to the interface table or the current array?)
+                    int interfaceBlockOffset = reader.ReadInt32();
+
+                    long ecuInterfaceBaseAddress = interfaceTableAddress + interfaceBlockOffset;
+
+                    ECUInterface ecuInterface = new ECUInterface(reader, ecuInterfaceBaseAddress);
+                    ECUInterfaces.Add(ecuInterface);
+                }
+            }
+            // try to read interface subtype block from the interface buffer table
+            // this address is relative to the definitions block
+            ECUInterfaceSubtypes = new List<ECUInterfaceSubtype>();
+            if (SubinterfacesOffset != null && SubinterfacesCount != null)
+            {
+                long ctTableAddress = oldAddress + (int)SubinterfacesOffset;
+                // Console.WriteLine($"Interface subtype table address: {ctTableAddress:X}, given offset: {ecuChildTypesOffset:X}");
+                for (int ctBufferIndex = 0; ctBufferIndex < SubinterfacesCount; ctBufferIndex++)
+                {
+                    // Console.WriteLine($"Parsing interface subtype {ctBufferIndex + 1}/{ecuNumberOfEcuChildTypes}");
+                    // find our ct block offset
+                    reader.BaseStream.Seek(ctTableAddress + (ctBufferIndex * 4), SeekOrigin.Begin);
+                    // seek to the actual block (ambiguity: is this relative to the ct table or the current array?)
+                    int actualBlockOffset = reader.ReadInt32();
+                    long ctBaseAddress = ctTableAddress + actualBlockOffset;
+
+                    ECUInterfaceSubtype ecuInterfaceSubtype = new ECUInterfaceSubtype(reader, ctBaseAddress, ctBufferIndex, language);
+                    ECUInterfaceSubtypes.Add(ecuInterfaceSubtype);
+                }
+            }
+            //PrintDebug();
         }
     }
 }

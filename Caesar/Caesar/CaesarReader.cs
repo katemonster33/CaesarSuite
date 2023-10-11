@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection.PortableExecutable;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Caesar
 {
@@ -53,6 +49,7 @@ namespace Caesar
         {
             if (CheckAndAdvanceBitflag(ref bitFlags) && dumpSize != null)
             {
+
                 // read the dump's offset relative to our current block
                 int dumpOffset = ReadInt32();
                 // save our reading cursor
@@ -130,6 +127,7 @@ namespace Caesar
             }
             return null;
         }
+
         public float? ReadBitflagFloat(ref ulong bitFlags)
         {
             if (CheckAndAdvanceBitflag(ref bitFlags))
@@ -140,7 +138,7 @@ namespace Caesar
             return null;
         }
 
-        public CaesarTable<C>? ReadBitflagSubTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
+        public CaesarTable<C>? ReadBitflagSubTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null, bool autoRead = true) where C : CaesarObject, new()
         {
             var output = new CaesarTable<C>();
 
@@ -157,7 +155,7 @@ namespace Caesar
             return null;
         }
 
-        public CaesarTable<C>? ReadBitflagSubTableAlt<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
+        public CaesarTable<C>? ReadBitflagSubTableAlt<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null, bool autoRead = true) where C : CaesarObject, new()
         {
             var output = new CaesarTable<C>();
 
@@ -168,16 +166,35 @@ namespace Caesar
             {
                 output.RelativeAddress = (int)blockOffset;
                 output.EntryCount = (int)entryCount;
+                if (autoRead)
+                {
+                    output.Read(this, parentObject, language, currentEcu);
+                }
+                return output;
+            }
+            return null;
+        }
+
+        public CaesarPool? ReadBitflagPool(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null)
+        {
+            int? entryCount = ReadBitflagInt32(ref parentObject.Bitflags);
+            int? blockOffset = ReadBitflagInt32(ref parentObject.Bitflags);
+
+            if (blockOffset != null && entryCount != null)
+            {
+                var output = new CaesarPool()
+                {
+                    RelativeAddress = (int)blockOffset,
+                    EntryCount = (int)entryCount
+                };
                 output.Read(this, parentObject, language, currentEcu);
                 return output;
             }
             return null;
         }
 
-        public CaesarTable<C>? ReadBitflagTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null) where C : CaesarObject, new()
+        public CaesarTable<C>? ReadBitflagTable<C>(CaesarObject parentObject, CTFLanguage language, ECU? currentEcu = null, bool autoRead = true) where C : CaesarObject, new()
         {
-            var output = new CaesarTable<C>();
-
             int? blockOffset = ReadBitflagInt32(ref parentObject.Bitflags);
             int? entryCount = ReadBitflagInt32(ref parentObject.Bitflags);
             int? entrySize = ReadBitflagInt32(ref parentObject.Bitflags);
@@ -185,11 +202,17 @@ namespace Caesar
 
             if (blockOffset != null && entryCount != null && entrySize != null)
             {
-                output.RelativeAddress = (int)blockOffset;
-                output.EntryCount = (int)entryCount;
-                output.EntrySize = entrySize;
-                output.BlockSize = blockSize ?? (entryCount * entrySize);
-                output.Read(this, parentObject, language, currentEcu);
+                var output = new CaesarTable<C>()
+                {
+                    RelativeAddress = (int)blockOffset,
+                    EntryCount = (int)entryCount,
+                    EntrySize = entrySize,
+                    BlockSize = blockSize ?? (entryCount * entrySize)
+                };
+                if (autoRead)
+                {
+                    output.Read(this, parentObject, language, currentEcu);
+                }
                 return output;
             }
             return null;

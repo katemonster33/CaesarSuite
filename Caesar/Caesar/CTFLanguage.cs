@@ -7,7 +7,7 @@ using System.IO;
 
 namespace Caesar
 {
-    public class CTFLanguage
+    public class CTFLanguage : CaesarObject
     {
         public string? Qualifier;
         public int? LanguageIndex;
@@ -16,27 +16,12 @@ namespace Caesar
         private int? StringCount;
         public List<string>? StringEntries;
 
-        public long BaseAddress;
-        public CTFLanguage() { }
-        public CTFLanguage(CaesarReader reader, long baseAddress, int headerSize) 
-        {
-            BaseAddress = baseAddress;
-            reader.BaseStream.Seek(BaseAddress, SeekOrigin.Begin);
-            ulong languageEntryBitflags = reader.ReadUInt16();
-
-            Qualifier = reader.ReadBitflagStringWithReader(ref languageEntryBitflags, BaseAddress);
-            LanguageIndex = reader.ReadBitflagInt16(ref languageEntryBitflags);
-            StringPoolSize = reader.ReadBitflagInt32(ref languageEntryBitflags);
-            MaybeOffsetFromStringPoolBase = reader.ReadBitflagInt32(ref languageEntryBitflags);
-            StringCount = reader.ReadBitflagInt32(ref languageEntryBitflags);
-
-            LoadStrings(reader, headerSize);
-        }
 
         public void LoadStrings(CaesarReader reader, int headerSize) 
         {
             if (StringCount != null)
             {
+                long oldPos = reader.BaseStream.Position;
                 StringEntries = new List<string>();
                 int caesarStringTableOffset = headerSize + 0x410 + 4; // header.CffHeaderSize; strange that this has to be manually computed
                 for (int i = 0; i < StringCount; i++)
@@ -47,6 +32,7 @@ namespace Caesar
                     string result = reader.ReadString(Encoding.UTF8);
                     StringEntries.Add(result);
                 }
+                reader.BaseStream.Seek(oldPos, SeekOrigin.Begin);
             }
             else StringEntries = null;
         }
@@ -78,7 +64,18 @@ namespace Caesar
 
         public void PrintDebug() 
         {
-            Console.WriteLine($"Language: {Qualifier} stringCount: {StringCount} stringPoolSize 0x{StringPoolSize:X}, unknowns: {LanguageIndex} {MaybeOffsetFromStringPoolBase}, base: {BaseAddress:X} ");
+            Console.WriteLine($"Language: {Qualifier} stringCount: {StringCount} stringPoolSize 0x{StringPoolSize:X}, unknowns: {LanguageIndex} {MaybeOffsetFromStringPoolBase}, base: {AbsoluteAddress:X} ");
+        }
+
+        protected override void ReadData(CaesarReader reader, CTFLanguage language, ECU? currentEcu)
+        {
+            Bitflags = reader.ReadUInt16();
+
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+            LanguageIndex = reader.ReadBitflagInt16(ref Bitflags);
+            StringPoolSize = reader.ReadBitflagInt32(ref Bitflags);
+            MaybeOffsetFromStringPoolBase = reader.ReadBitflagInt32(ref Bitflags);
+            StringCount = reader.ReadBitflagInt32(ref Bitflags);
         }
     }
 }
