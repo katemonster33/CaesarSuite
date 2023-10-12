@@ -202,7 +202,7 @@ namespace Caesar
             {
                 var diagServicesOffsets = DiagServicesPoolOffsets.GetPoolIndices();
                 DiagServices = new DiagService[diagServicesOffsets.Count];
-
+                List<DiagService> dsTmp = new List<DiagService>(diagServicesOffsets.Count);
                 /*
                 // computationally expensive, 40ish % runtime is spent here
                 // easier to read, below optimization essentially accomplishes this in a shorter period
@@ -223,31 +223,35 @@ namespace Caesar
                 if (parentEcu.GlobalDiagServices != null)
                 {
                     List<DiagService> globalDiagServices = parentEcu.GlobalDiagServices.GetObjects();
-                    for (int i = 0; i < poolSize; i++)
+                    //for (int i = 0; i < poolSize; i++)
+                    //{
+                    //    if (i == diagServicesOffsets[i])
+                    //    {
+                    //        DiagServices[i] = globalDiagServices[i];
+                    //    }
+                    //}
+                    //diagServicesOffsets.Sort();
+                    //int lowestIndex = 0;
+                    //int loopMax = parentEcu.GlobalDiagServices.Count;
+                    //for (int i = 0; i < poolSize; i++)
+                    //{
+                    //    if (DiagServices[i] != null)
+                    //    {
+                    //        continue;
+                    //    }
+                    //    for (int globalIndex = lowestIndex; globalIndex < loopMax; globalIndex++)
+                    //    {
+                    //        if (globalDiagServices[globalIndex].PoolIndex == diagServicesOffsets[i])
+                    //        {
+                    //            DiagServices[i] = globalDiagServices[globalIndex];
+                    //            lowestIndex = globalIndex;
+                    //            break;
+                    //        }
+                    //    }
+                    //}
+                    foreach(var idx in diagServicesOffsets)
                     {
-                        if (i == diagServicesOffsets[i])
-                        {
-                            DiagServices[i] = globalDiagServices[i];
-                        }
-                    }
-                    diagServicesOffsets.Sort();
-                    int lowestIndex = 0;
-                    int loopMax = parentEcu.GlobalDiagServices.Count;
-                    for (int i = 0; i < poolSize; i++)
-                    {
-                        if (DiagServices[i] != null)
-                        {
-                            continue;
-                        }
-                        for (int globalIndex = lowestIndex; globalIndex < loopMax; globalIndex++)
-                        {
-                            if (globalDiagServices[globalIndex].PoolIndex == diagServicesOffsets[i])
-                            {
-                                DiagServices[i] = globalDiagServices[globalIndex];
-                                lowestIndex = globalIndex;
-                                break;
-                            }
-                        }
+                        dsTmp.Add(globalDiagServices[idx]);
                     }
                 }
             }
