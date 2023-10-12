@@ -27,16 +27,13 @@ namespace Caesar
         private int? DTC_Count; // F
         private int? DTC_Offset;
         public CaesarPool? EnvironmentContextsPoolOffsets;
-        private int? Xref_Count; // H
-        private int? Xref_Offset;
+        private CaesarPool? Xrefs; // H
         public CaesarPool? VCDomainPoolOffsets;
 
         public string? NegativeResponseName;
         public int? UnkByte;
 
         public List<Tuple<int, int, int>> DTCsPoolOffsetsWithBounds = new List<Tuple<int, int, int>>();
-
-        public int[] Xrefs = new int[] { };
 
         // these should be manually deserialized by creating references back to the parent ECU
 
@@ -64,6 +61,7 @@ namespace Caesar
             CreateDiagServices(parentEcu);
             CreateDTCs(parentEcu);
             CreateEnvironmentContexts(parentEcu);
+            CreateComParameters(parentEcu);
 
             /*
             // no restoring required
@@ -97,13 +95,14 @@ namespace Caesar
         public List<DiagService> GetEnvironmentContextsForDTC(DTC inDtc)
         {
             List<DiagService> ctxList = new List<DiagService>();
-            if (inDtc.XrefStart != null && inDtc.XrefCount != null)
+            if (inDtc.XrefStart != null && inDtc.XrefCount != null && Xrefs != null)
             {
+                var xrefsCpy = Xrefs.GetPoolIndices();
                 for (int i = (int)inDtc.XrefStart; i < (inDtc.XrefStart + inDtc.XrefCount); i++)
                 {
                     foreach (DiagService envToTest in EnvironmentContexts)
                     {
-                        int xref = Xrefs[i];
+                        int xref = xrefsCpy[i];
                         if (envToTest.PoolIndex == xref)
                         {
                             ctxList.Add(envToTest);
@@ -115,10 +114,15 @@ namespace Caesar
             return ctxList;
         }
 
-        public void CreateComParameters(CaesarReader reader, ECU parentEcu)
+        public void CreateComParameters(ECU parentEcu)
         {
-            if (ComParameters != null)
+            if (ComParameters != null && parentEcu.ECUInterfaceSubtypes != null)
             {
+                var subTypes = parentEcu.ECUInterfaceSubtypes.GetObjects();
+                foreach (var subType in subTypes)
+                {
+                    subType.CommunicationParameters.Clear();
+                }
                 foreach (var comParam in ComParameters.GetObjects())
                 {
                     if (comParam.ParentInterfaceIndex != null && comParam.SubinterfaceIndex != null)
@@ -126,13 +130,13 @@ namespace Caesar
                         // KW2C3PE uses a different parent addressing style
                         int parentIndex = (int)(comParam.ParentInterfaceIndex > 0 ? comParam.ParentInterfaceIndex : comParam.SubinterfaceIndex);
 
-                        if (comParam.ParentInterfaceIndex >= parentEcu.ECUInterfaceSubtypes.Count)
+                        if (comParam.ParentInterfaceIndex >= subTypes.Count)
                         {
                             throw new Exception("ComParam: tried to assign to nonexistent interface");
                         }
                         else
                         {
-                            parentEcu.ECUInterfaceSubtypes[parentIndex].CommunicationParameters.Add(comParam);
+                            subTypes[parentIndex].CommunicationParameters.Add(comParam);
                         }
                     }
                 }
@@ -307,19 +311,6 @@ namespace Caesar
             */
         }
 
-        private void CreateXrefs(BinaryReader reader)
-        {
-            Xrefs = new int[Xref_Count ?? 0];
-            if (Xref_Count != null && Xref_Offset != null)
-            {
-                reader.BaseStream.Seek(AbsoluteAddress + (long)Xref_Offset, SeekOrigin.Begin);
-                for (int i = 0; i < Xref_Count; i++)
-                {
-                    Xrefs[i] = reader.ReadInt32();
-                }
-            }
-        }
-
         private void CreateEnvironmentContexts(ECU parentEcu)
         {
             if (EnvironmentContextsPoolOffsets != null)
@@ -391,8 +382,7 @@ namespace Caesar
             Console.WriteLine($"{nameof(DTC_Count)} : {DTC_Count}");
             Console.WriteLine($"{nameof(DTC_Offset)} : {DTC_Offset}");
             Console.WriteLine($"{nameof(EnvironmentContextsPoolOffsets)} : {EnvironmentContextsPoolOffsets}");
-            Console.WriteLine($"{nameof(Xref_Count)} : {Xref_Count}");
-            Console.WriteLine($"{nameof(Xref_Offset)} : {Xref_Offset}");
+            Console.WriteLine($"{nameof(Xrefs)} : {Xrefs}");
             Console.WriteLine($"{nameof(VCDomainPoolOffsets)} : {VCDomainPoolOffsets}");
 
         }
@@ -409,15 +399,12 @@ namespace Caesar
 
         protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
-            int blockSize = 0;
-            if (ParentObject is CaesarTable<ECUVariant> varTable && varTable.EntrySize != null)
-            {
-                blockSize = (int)varTable.EntrySize;
-            }
-            byte[] variantBytes = reader.ReadBytes(blockSize);
+            byte[] variantBytes = reader.ReadBytes(EntrySize);
 
             using (CaesarReader variantReader = new CaesarReader(new MemoryStream(variantBytes, 0, variantBytes.Length, false, true)))
             {
+                int oldAddress = AbsoluteAddress;
+                AbsoluteAddress = 0;
                 Bitflags = variantReader.ReadUInt32();
                 int skip = variantReader.ReadInt32();
 
@@ -428,10 +415,7 @@ namespace Caesar
                 UnkStr2 = variantReader.ReadBitflagStringWithReader(ref Bitflags);
 
                 Unk1 = variantReader.ReadBitflagInt32(ref Bitflags);  // 1 
-                int oldAddress = AbsoluteAddress;
-                AbsoluteAddress = 0;
                 VariantPatterns = variantReader.ReadBitflagSubTableAlt<ECUVariantPattern>(this, container);
-                AbsoluteAddress = oldAddress;
                 SubsectionB_Count = variantReader.ReadBitflagInt32(ref Bitflags);  // 4 
                 SubsectionB_Offset = variantReader.ReadBitflagInt32(ref Bitflags);  // 5 
                 ComParameters = variantReader.ReadBitflagSubTableAlt<ComParameter>(this, container);
@@ -441,13 +425,13 @@ namespace Caesar
                 DTC_Count = variantReader.ReadBitflagInt32(ref Bitflags);  // 12 
                 DTC_Offset = variantReader.ReadBitflagInt32(ref Bitflags);  // 13 
                 EnvironmentContextsPoolOffsets = variantReader.ReadBitflagPool(this, container);
-                Xref_Count = variantReader.ReadBitflagInt32(ref Bitflags);  // 16
-                Xref_Offset = variantReader.ReadBitflagInt32(ref Bitflags);  // 17 
+                Xrefs = variantReader.ReadBitflagPool(this, container);
 
                 VCDomainPoolOffsets = variantReader.ReadBitflagPool(this, container);
 
                 NegativeResponseName = variantReader.ReadBitflagStringWithReader(ref Bitflags);
                 UnkByte = variantReader.ReadBitflagInt8(ref Bitflags);  // 20 byte
+                AbsoluteAddress = oldAddress;
 
                 // DTCs
                 //DTCsPoolOffsets = new List<int>();
@@ -464,16 +448,6 @@ namespace Caesar
                         DTCsPoolOffsetsWithBounds.Add(new Tuple<int, int, int>(actualIndex, xrefStart, xrefCount));
                     }
                 }
-            }
-            ECU? parentEcu = GetParentByType<ECU>();
-            if (parentEcu != null)
-            {
-                CreateVCDomains(parentEcu);
-                CreateDiagServices(parentEcu);
-                CreateComParameters(reader, parentEcu);
-                CreateDTCs(parentEcu);
-                CreateEnvironmentContexts(parentEcu);
-                CreateXrefs(reader);
             }
         }
     }

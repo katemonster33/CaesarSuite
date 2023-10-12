@@ -15,13 +15,13 @@ namespace Caesar
         protected CaesarObject? ParentObject { get; set; }
 
         // object's address relative to the last parent CaesarObject, this is what we read
-        public int RelativeAddress { get; set; }
+        public int RelativeAddress { get; set; } = -1;
 
         // actual offset in the file to be read from
         [JsonIgnore]
         public int AbsoluteAddress { get; protected set; }
 
-        public int PoolIndex { get; set; } = -1;
+        public int PoolIndex { get; set; } = 0;
 
         internal ulong Bitflags = 0;
 
@@ -53,7 +53,7 @@ namespace Caesar
             {
                 return false;
             }
-            if(RelativeAddress != 0)
+            if(RelativeAddress != -1)
             {
                 AbsoluteAddress = (parentObject != null ? parentObject.AbsoluteAddress : 0) + RelativeAddress;
                 long nextHeaderOffset = reader.BaseStream.Position;
@@ -63,7 +63,7 @@ namespace Caesar
             }
             return true;
         }
-
+        
         protected abstract void ReadData(CaesarReader reader, CaesarContainer container);
     }
 }

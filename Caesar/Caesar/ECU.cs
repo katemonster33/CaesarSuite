@@ -15,10 +15,8 @@ namespace Caesar
         public CaesarStringReference? EcuName;
         public CaesarStringReference? EcuDescription;
         public string? EcuXmlVersion;
-        public int? InterfaceBlockCount;
-        public int? InterfaceTableOffset;
-        public int? SubinterfacesCount;
-        public int? SubinterfacesOffset;
+        public CaesarTable<ECUInterface>? ECUInterfaces;
+        public CaesarTable<ECUInterfaceSubtype>? ECUInterfaceSubtypes;
         public string? EcuClassName;
         public string? UnkStr7;
         public string? UnkStr8;
@@ -51,10 +49,6 @@ namespace Caesar
 
         public int? Unk39;
 
-        public List<ECUInterface> ECUInterfaces = new List<ECUInterface>();
-        public List<ECUInterfaceSubtype> ECUInterfaceSubtypes = new List<ECUInterfaceSubtype>();
-
-
         [Newtonsoft.Json.JsonIgnore]
         public CTFLanguage Language;
 
@@ -74,9 +68,12 @@ namespace Caesar
                     vc.Restore(language, this);
                 }
             }
-            foreach (ECUInterfaceSubtype iface in ECUInterfaceSubtypes)
+            if(ECUInterfaceSubtypes != null)
             {
-                iface.Restore(language);
+                foreach (ECUInterfaceSubtype iface in ECUInterfaceSubtypes.GetObjects())
+                {
+                    iface.Restore(language);
+                }
             }
             if (ECUVariants != null)
             {
@@ -131,10 +128,8 @@ namespace Caesar
                 $"{nameof(EcuName)}={EcuName}, " +
                 $"{nameof(EcuDescription)}={EcuDescription}, " +
                 $"ecuXmlVersion={EcuXmlVersion}, " +
-                $"{nameof(InterfaceBlockCount)}={InterfaceBlockCount}, " +
-                $"{nameof(InterfaceTableOffset)}=0x{InterfaceTableOffset:X}, " +
-                $"{nameof(SubinterfacesCount)}={SubinterfacesCount}, " +
-                $"{nameof(SubinterfacesOffset)}={SubinterfacesOffset}, " +
+                $"{nameof(ECUInterfaces)}={ECUInterfaces}, " +
+                $"{nameof(ECUInterfaceSubtypes)}={ECUInterfaceSubtypes}, " +
                 $"ecuClassName: {EcuClassName}, " +
                 $"euIdk7={UnkStr7}, " +
                 $"ecuIdk8={UnkStr8}, " +
@@ -180,10 +175,8 @@ namespace Caesar
             EcuName = reader.ReadBitflagStringRef(ref Bitflags, container);
             EcuDescription = reader.ReadBitflagStringRef(ref Bitflags, container);
             EcuXmlVersion = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
-            InterfaceBlockCount = reader.ReadBitflagInt32(ref Bitflags);
-            InterfaceTableOffset = reader.ReadBitflagInt32(ref Bitflags);
-            SubinterfacesCount = reader.ReadBitflagInt32(ref Bitflags);
-            SubinterfacesOffset = reader.ReadBitflagInt32(ref Bitflags);
+            ECUInterfaces = reader.ReadBitflagSubTableAlt<ECUInterface>(this, container);
+            ECUInterfaceSubtypes = reader.ReadBitflagSubTableAlt<ECUInterfaceSubtype>(this, container);
             EcuClassName = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
             UnkStr7 = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
             UnkStr8 = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
@@ -221,52 +214,6 @@ namespace Caesar
             Unk_BlockSize = reader.ReadBitflagInt32(ref Bitflags);
 
             Unk39 = reader.ReadBitflagInt32(ref Bitflags);
-
-            // read ecu's supported interfaces and subtypes
-
-            ECUInterfaces = new List<ECUInterface>();
-            if (InterfaceTableOffset != null && InterfaceBlockCount != null)
-            {
-                // try to read interface block from the interface buffer table
-                // this address is relative to the definitions block
-                long interfaceTableAddress = oldAddress + (int)InterfaceTableOffset;
-                // Console.WriteLine($"Interface table address: {interfaceTableAddress:X}, given offset: {interfaceTableOffset:X}");
-
-                for (int interfaceBufferIndex = 0; interfaceBufferIndex < InterfaceBlockCount; interfaceBufferIndex++)
-                {
-                    // Console.WriteLine($"Parsing interface {interfaceBufferIndex + 1}/{interfaceBlockCount}");
-
-                    // find our interface block offset
-                    reader.BaseStream.Seek(interfaceTableAddress + (interfaceBufferIndex * 4), SeekOrigin.Begin);
-                    // seek to the actual block (ambiguity: is this relative to the interface table or the current array?)
-                    int interfaceBlockOffset = reader.ReadInt32();
-
-                    long ecuInterfaceBaseAddress = interfaceTableAddress + interfaceBlockOffset;
-
-                    ECUInterface ecuInterface = new ECUInterface(reader, container, ecuInterfaceBaseAddress);
-                    ECUInterfaces.Add(ecuInterface);
-                }
-            }
-            // try to read interface subtype block from the interface buffer table
-            // this address is relative to the definitions block
-            ECUInterfaceSubtypes = new List<ECUInterfaceSubtype>();
-            if (SubinterfacesOffset != null && SubinterfacesCount != null)
-            {
-                long ctTableAddress = oldAddress + (int)SubinterfacesOffset;
-                // Console.WriteLine($"Interface subtype table address: {ctTableAddress:X}, given offset: {ecuChildTypesOffset:X}");
-                for (int ctBufferIndex = 0; ctBufferIndex < SubinterfacesCount; ctBufferIndex++)
-                {
-                    // Console.WriteLine($"Parsing interface subtype {ctBufferIndex + 1}/{ecuNumberOfEcuChildTypes}");
-                    // find our ct block offset
-                    reader.BaseStream.Seek(ctTableAddress + (ctBufferIndex * 4), SeekOrigin.Begin);
-                    // seek to the actual block (ambiguity: is this relative to the ct table or the current array?)
-                    int actualBlockOffset = reader.ReadInt32();
-                    long ctBaseAddress = ctTableAddress + actualBlockOffset;
-
-                    ECUInterfaceSubtype ecuInterfaceSubtype = new ECUInterfaceSubtype(reader, ctBaseAddress, ctBufferIndex);
-                    ECUInterfaceSubtypes.Add(ecuInterfaceSubtype);
-                }
-            }
             //PrintDebug();
         }
     }

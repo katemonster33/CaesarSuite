@@ -8,7 +8,7 @@ using System.IO;
 
 namespace Caesar
 {
-    public class ECUInterfaceSubtype
+    public class ECUInterfaceSubtype : CaesarObject
     {
         public enum ParamName 
         {
@@ -59,9 +59,6 @@ namespace Caesar
         public byte? Unk9;
         public char? Unk10; // might be signed
 
-        private long BaseAddress;
-        private int Index;
-
         public List<ComParameter> CommunicationParameters = new List<ComParameter>();
 
         public void Restore(CTFLanguage language) 
@@ -70,36 +67,6 @@ namespace Caesar
             {
                 cp.Restore(language);
             }
-        }
-
-        public ECUInterfaceSubtype() 
-        {
-            Index = -1;
-            BaseAddress = -1;
-        }
-
-        public ECUInterfaceSubtype(CaesarReader reader, long baseAddress, int index)
-        {
-            Index = index;
-            BaseAddress = baseAddress;
-            reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
-            // we can now properly operate on the interface block
-            ulong ctBitflags = reader.ReadUInt32();
-
-            Qualifier = reader.ReadBitflagStringWithReader(ref ctBitflags, BaseAddress);
-            Name_CTF = reader.ReadBitflagInt32(ref ctBitflags);
-            Description_CTF = reader.ReadBitflagInt32(ref ctBitflags);
-
-            Unk3 = reader.ReadBitflagInt16(ref ctBitflags);
-            Unk4 = reader.ReadBitflagInt16(ref ctBitflags);
-
-            Unk5 = reader.ReadBitflagInt32(ref ctBitflags);
-            Unk6 = reader.ReadBitflagInt32(ref ctBitflags);
-            Unk7 = reader.ReadBitflagInt32(ref ctBitflags);
-
-            Unk8 = reader.ReadBitflagUInt8(ref ctBitflags);
-            Unk9 = reader.ReadBitflagUInt8(ref ctBitflags);
-            Unk10 = reader.ReadBitflagInt8(ref ctBitflags); // might be signed
         }
 
         public ComParameter? GetComParameterByName(string paramName) 
@@ -120,9 +87,30 @@ namespace Caesar
             }
         }
 
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
+        {
+            // we can now properly operate on the interface block
+            Bitflags = reader.ReadUInt32();
+
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+            Name_CTF = reader.ReadBitflagInt32(ref Bitflags);
+            Description_CTF = reader.ReadBitflagInt32(ref Bitflags);
+
+            Unk3 = reader.ReadBitflagInt16(ref Bitflags);
+            Unk4 = reader.ReadBitflagInt16(ref Bitflags);
+
+            Unk5 = reader.ReadBitflagInt32(ref Bitflags);
+            Unk6 = reader.ReadBitflagInt32(ref Bitflags);
+            Unk7 = reader.ReadBitflagInt32(ref Bitflags);
+
+            Unk8 = reader.ReadBitflagUInt8(ref Bitflags);
+            Unk9 = reader.ReadBitflagUInt8(ref Bitflags);
+            Unk10 = reader.ReadBitflagInt8(ref Bitflags); // might be signed
+        }
+
         public void PrintDebug()
         {
-            Console.WriteLine($"iface subtype: @ 0x{BaseAddress:X}");
+            Console.WriteLine($"iface subtype: @ 0x{AbsoluteAddress:X}");
             Console.WriteLine($"{nameof(Name_CTF)} : {Name_CTF}");
             Console.WriteLine($"{nameof(Description_CTF)} : {Description_CTF}");
             Console.WriteLine($"{nameof(Unk3)} : {Unk3}");

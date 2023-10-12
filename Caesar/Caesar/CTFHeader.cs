@@ -15,6 +15,8 @@ namespace Caesar
         public int? CtfUnk4;
         public CaesarTable<CTFLanguage> CtfLanguages = new CaesarTable<CTFLanguage>();
         public string? CtfUnkString;
+        public string? CtfModuleName;
+        public string? CtfXmlDefinition;
 
         public void PrintDebug() 
         {
@@ -37,9 +39,13 @@ namespace Caesar
             CtfUnk4 = reader.ReadBitflagInt32(ref Bitflags);
             CtfLanguages = reader.ReadBitflagSubTableAlt<CTFLanguage>(this, container) ?? new CaesarTable<CTFLanguage>();
             CtfUnkString = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
-
-            int? tmp = reader.ReadBitflagInt32(ref Bitflags);
-            tmp = reader.ReadBitflagInt32(ref Bitflags);
+            CtfXmlDefinition = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+            short? stmp = reader.ReadBitflagInt16(ref Bitflags);
+            if(stmp != null)
+            {
+                byte[] bytes = reader.ReadBytes((int)stmp);
+                CtfModuleName = Encoding.UTF8.GetString(bytes);
+            }
         }
 
         public void LoadStrings(CaesarReader reader, int headerSize)

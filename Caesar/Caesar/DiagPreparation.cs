@@ -15,8 +15,9 @@ namespace Caesar
         public int? Unk2;
         public int? AlternativeBitWidth;
         public int? IITOffset;
-        public int? InfoPoolIndex;
-        public int? PresPoolIndex;
+        private int? InfoPoolIndex;
+        private int? PresPoolIndex;
+        public DiagPresentation? Presentation;
         public int? Field1E;
         public int? SystemParam;
         public int? DumpMode;
@@ -102,83 +103,22 @@ namespace Caesar
                 if (SystemParam == null)
                 {
                     // apparently both 0x2000 and 0x8000 source from different pools, but use the same PRESENTATION structure
-                    if (modeE == 0x8000 && InfoPoolIndex != null && parentEcu.GlobalInternalPresentations != null)
+                    if (modeE == 0x8000 && InfoPoolIndex != null)
                     {
                         FieldType = InferredDataType.NativeInfoPoolType;
-
-                        DiagPresentation pres = parentEcu.GlobalInternalPresentations.GetObjects()[(int)InfoPoolIndex];
-                        /*
-                        // depreciate use of ReadCBFWithOffset
-                        poolReader.BaseStream.Seek(ParentECU.Info_EntrySize * InfoPoolIndex, SeekOrigin.Begin);
-
-                        int presentationStructOffset = poolReader.ReadInt32();
-                        int presentationStructSize = poolReader.ReadInt32();
-
-                        reader.BaseStream.Seek(presentationStructOffset + ParentECU.Info_BlockOffset, SeekOrigin.Begin);
-                        byte[] presentationStruct = reader.ReadBytes(presentationStructSize);
-
-                        int presentationMode = CaesarStructure.ReadCBFWithOffset(0x1C, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_Type
-                        int presentationLength = CaesarStructure.ReadCBFWithOffset(0x1A, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_TypeLength
-                        if (presentationLength > 0)
+                        if (parentEcu.GlobalInternalPresentations != null)
                         {
-                            resultBitSize = presentationLength;
-                        }
-                        else
-                        {
-                            resultBitSize = CaesarStructure.ReadCBFWithOffset(0x21, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // ???
-                        }
-                        */
-                        if (pres.TypeLength_1A != null && pres.TypeLengthBytesMaybe_21 != null)
-                        {
-                            resultBitSize = (int)(pres.TypeLength_1A > 0 ? pres.TypeLength_1A : pres.TypeLengthBytesMaybe_21);
-                        }
-
-                        // if value was specified in bytes, convert to bits
-                        if (pres.Type_1C != null && pres.Type_1C == 0)
-                        {
-                            resultBitSize *= 8;
+                            Presentation = parentEcu.GlobalInternalPresentations.GetObjects()[(int)InfoPoolIndex];
+                            resultBitSize = GetBitSizeFromPresentation(Presentation);
                         }
                     }
                     else if (modeE == 0x2000 && PresPoolIndex != null)
                     {
                         FieldType = InferredDataType.NativePresentationType;
-                        //byte[] presPool = parentEcu.ReadECUPresentationsPool(reader);
-
-                        if (PresPoolIndex != null && parentEcu.GlobalPresentations != null)
+                        if (parentEcu.GlobalPresentations != null)
                         {
-                            DiagPresentation pres = parentEcu.GlobalPresentations.GetObjects()[(int)PresPoolIndex];
-                            /*
-                            // depreciate use of ReadCBFWithOffset
-                            poolReader.BaseStream.Seek(parentEcu.Presentations_EntrySize * PresPoolIndex, SeekOrigin.Begin);
-                            int presentationStructOffset = poolReader.ReadInt32();
-                            int presentationStructSize = poolReader.ReadInt32();
-
-                            reader.BaseStream.Seek(presentationStructOffset + parentEcu.Presentations_BlockOffset, SeekOrigin.Begin);
-                            byte[] presentationStruct = reader.ReadBytes(presentationStructSize);
-
-                            int presentationMode = CaesarStructure.ReadCBFWithOffset(0x1C, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_Type
-                            int presentationLength = CaesarStructure.ReadCBFWithOffset(0x1A, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // PRESS_TypeLength
-
-                            if (presentationLength > 0)
-                            {
-                                resultBitSize = presentationLength;
-                            }
-                            else
-                            {
-                                resultBitSize = CaesarStructure.ReadCBFWithOffset(0x21, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // ???
-                            }
-                            */
-
-                            if (pres.TypeLength_1A != null && pres.TypeLengthBytesMaybe_21 != null && pres.Type_1C != null)
-                            {
-                                resultBitSize = (int)(pres.TypeLength_1A > 0 ? pres.TypeLength_1A : pres.TypeLengthBytesMaybe_21);
-
-                                // if value was specified in bytes, convert to bits
-                                if (pres.Type_1C == 0)
-                                {
-                                    resultBitSize *= 8;
-                                }
-                            }
+                            Presentation = parentEcu.GlobalPresentations.GetObjects()[(int)PresPoolIndex];
+                            resultBitSize = GetBitSizeFromPresentation(Presentation);
                         }
                     }
                     else 
@@ -308,6 +248,27 @@ namespace Caesar
             }
             */
             SizeInBits = resultBitSize;
+        }
+
+        private int GetBitSizeFromPresentation(DiagPresentation pres)
+        {
+            int resultBitSize = 0;
+            if (pres.TypeLength_1A != null && pres.TypeLength_1A > 0)
+            {
+                resultBitSize = (int)pres.TypeLength_1A;
+            }
+            else if(pres.TypeLengthBytesMaybe_21 != null)
+            {
+                resultBitSize = (int)pres.TypeLengthBytesMaybe_21;
+            }
+
+            // if value was specified in bytes, convert to bits
+            if (pres.Type_1C != null && pres.Type_1C == 0)
+            {
+                resultBitSize *= 8;
+            }
+
+            return resultBitSize;
         }
 
         public void PrintDebug()

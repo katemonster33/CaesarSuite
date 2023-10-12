@@ -7,7 +7,7 @@ using System.IO;
 
 namespace Caesar
 {
-    public class ECUInterface
+    public class ECUInterface : CaesarObject
     {
         public string? Qualifier;
         public CaesarStringReference? Name;
@@ -21,34 +21,24 @@ namespace Caesar
 
         public List<string> ComParameterNames = new List<string>();
 
-        private long BaseAddress;
-
-        public ECUInterface() 
+        protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
-            BaseAddress = -1;
-        }
-
-        public ECUInterface(CaesarReader reader, CaesarContainer container, long baseAddress)
-        {
-            BaseAddress = baseAddress;
-            reader.BaseStream.Seek(BaseAddress, SeekOrigin.Begin);
-
             // we can now properly operate on the interface block
-            ulong interfaceBitflags = reader.ReadUInt32();
+            Bitflags = reader.ReadUInt32();
 
-            Qualifier = reader.ReadBitflagStringWithReader(ref interfaceBitflags, BaseAddress);
-            Name = reader.ReadBitflagStringRef(ref interfaceBitflags, container);
-            Description = reader.ReadBitflagStringRef(ref interfaceBitflags, container);
-            VersionString = reader.ReadBitflagStringWithReader(ref interfaceBitflags, BaseAddress);
-            Version = reader.ReadBitflagInt32(ref interfaceBitflags);
-            ComParamCount = reader.ReadBitflagInt32(ref interfaceBitflags);
-            ComParamListOffset = reader.ReadBitflagInt32(ref interfaceBitflags);
-            Unk6 = reader.ReadBitflagInt16(ref interfaceBitflags);
+            Qualifier = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+            Name = reader.ReadBitflagStringRef(ref Bitflags, container);
+            Description = reader.ReadBitflagStringRef(ref Bitflags, container);
+            VersionString = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+            Version = reader.ReadBitflagInt32(ref Bitflags);
+            ComParamCount = reader.ReadBitflagInt32(ref Bitflags);
+            ComParamListOffset = reader.ReadBitflagInt32(ref Bitflags);
+            Unk6 = reader.ReadBitflagInt16(ref Bitflags);
 
 
             if (ComParamListOffset != null && ComParamCount != null)
             {
-                long comparamFileOffset = (long)ComParamListOffset + BaseAddress;
+                long comparamFileOffset = (long)ComParamListOffset + AbsoluteAddress;
                 // Console.WriteLine($"interface string table offset from definition block : {interfaceStringTableOffset_fromDefinitionBlock:X}");
 
                 for (int interfaceStringIndex = 0; interfaceStringIndex < ComParamCount; interfaceStringIndex++)

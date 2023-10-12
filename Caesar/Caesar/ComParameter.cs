@@ -38,9 +38,9 @@ namespace Caesar
         string GetComParamName()
         {
             ECU? parentEcu = GetParentByType<ECU>();
-            if(parentEcu != null && ParentInterfaceIndex != null && ParentInterfaceIndex < parentEcu.ECUInterfaces.Count)
+            if(parentEcu != null && parentEcu.ECUInterfaces != null && ParentInterfaceIndex != null && ParentInterfaceIndex < parentEcu.ECUInterfaces.Count)
             {
-                var ecuInt = parentEcu.ECUInterfaces[(int)ParentInterfaceIndex];
+                var ecuInt = parentEcu.ECUInterfaces.GetObjects()[(int)ParentInterfaceIndex];
                 if(ComParamIndex != null && ComParamIndex < ecuInt.ComParameterNames.Count)
                 {
                     return ecuInt.ComParameterNames[(int)ComParamIndex];
