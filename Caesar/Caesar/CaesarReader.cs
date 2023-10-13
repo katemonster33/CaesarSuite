@@ -23,21 +23,26 @@ namespace Caesar
             DefaultEncoding = encoding;
         }
 
+        public string ReadStringByAddress(long virtualBase, int? offset = null)
+        {
+            // read the string's offset relative to our current block
+            int stringOffset = offset ?? ReadInt32();
+            // save our reading cursor
+            long readerPosition = BaseStream.Position;
+            // seek to the specified offset, then read out the string
+            BaseStream.Seek(stringOffset + virtualBase, SeekOrigin.Begin);
+            string result = ReadString(Encoding.UTF8);
+            // restore our reading cursor
+            BaseStream.Seek(readerPosition, SeekOrigin.Begin);
+            return result;
+        }
+
         // slightly more complex because it jumps to the string position for reading
-        public string? ReadBitflagStringWithReader(ref ulong bitFlags, long virtualBase = 0)
+        public string? ReadBitflagStringWithReader(ref ulong bitFlags, long virtualBase)
         {
             if (CheckAndAdvanceBitflag(ref bitFlags))
             {
-                // read the string's offset relative to our current block
-                int stringOffset = ReadInt32();
-                // save our reading cursor
-                long readerPosition = BaseStream.Position;
-                // seek to the specified offset, then read out the string
-                BaseStream.Seek(stringOffset + virtualBase, SeekOrigin.Begin);
-                string result = ReadString(Encoding.UTF8);
-                // restore our reading cursor
-                BaseStream.Seek(readerPosition, SeekOrigin.Begin);
-                return result;
+                return ReadStringByAddress(virtualBase);
             }
             else
             {

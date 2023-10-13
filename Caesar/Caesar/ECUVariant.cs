@@ -412,11 +412,11 @@ namespace Caesar
                 Bitflags = variantReader.ReadUInt32();
                 int skip = variantReader.ReadInt32();
 
-                Qualifier = variantReader.ReadBitflagStringWithReader(ref Bitflags);
+                Qualifier = variantReader.ReadBitflagStringWithReader(ref Bitflags, 0);
                 Name = variantReader.ReadBitflagStringRef(ref Bitflags, container);
                 Description = variantReader.ReadBitflagStringRef(ref Bitflags, container);
-                UnkStr1 = variantReader.ReadBitflagStringWithReader(ref Bitflags);
-                UnkStr2 = variantReader.ReadBitflagStringWithReader(ref Bitflags);
+                UnkStr1 = variantReader.ReadBitflagStringWithReader(ref Bitflags, 0);
+                UnkStr2 = variantReader.ReadBitflagStringWithReader(ref Bitflags, 0);
 
                 Unk1 = variantReader.ReadBitflagInt32(ref Bitflags);  // 1 
                 VariantPatterns = variantReader.ReadBitflagSubTableAlt<ECUVariantPattern>(this, container);
@@ -433,7 +433,7 @@ namespace Caesar
 
                 VCDomainPoolOffsets = variantReader.ReadBitflagPool(this, container);
 
-                NegativeResponseName = variantReader.ReadBitflagStringWithReader(ref Bitflags);
+                NegativeResponseName = variantReader.ReadBitflagStringWithReader(ref Bitflags, 0);
                 UnkByte = variantReader.ReadBitflagInt8(ref Bitflags);  // 20 byte
                 AbsoluteAddress = oldAddress;
 

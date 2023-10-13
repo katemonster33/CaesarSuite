@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Caesar.DSC;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,6 +19,7 @@ namespace Caesar
         private int? DscOffset;
         private int? DscCount;
         private int? DscEntrySize;
+        public CaesarTable<DSCContext>? DscTable;
         public string? CbfVersionString;
         public string? GpdVersionString;
         public string? XmlString;
@@ -59,6 +61,21 @@ namespace Caesar
             DscOffset = reader.ReadBitflagInt32(ref Bitflags);
             DscCount = reader.ReadBitflagInt32(ref Bitflags);
             DscEntrySize = reader.ReadBitflagInt32(ref Bitflags);
+            if(DscOffset != null && DscCount != null && DscEntrySize != null && StringPoolSize != null)
+            {
+                var oldPos = AbsoluteAddress;
+
+                AbsoluteAddress = (int)StringPoolSize + CffHeaderSize + 0x414;
+                DscTable = new CaesarTable<DSCContext>()
+                {
+                    RelativeAddress = (int)DscOffset,
+                    EntryCount = (int)DscEntrySize,
+                    EntrySize = (int)DscCount,
+                    BlockSize = (int)DscEntrySize * DscCount
+                };
+                DscTable.Read(reader, this, container);
+                AbsoluteAddress  = oldPos;
+            }
 
             CbfVersionString = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
             GpdVersionString = reader.ReadBitflagStringWithReader(ref Bitflags, BaseAddress);
