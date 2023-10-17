@@ -23,6 +23,15 @@ namespace Caesar
             DefaultEncoding = encoding;
         }
 
+        public byte[] ReadDump(long address, int size)
+        {
+            long oldPos = BaseStream.Position;
+            BaseStream.Seek(address, SeekOrigin.Begin);
+            byte[] output = ReadBytes(size);
+            BaseStream.Seek(oldPos, SeekOrigin.Begin);
+            return output;
+        }
+
         public string ReadStringByAddress(long virtualBase, int? offset = null)
         {
             // read the string's offset relative to our current block
@@ -54,17 +63,10 @@ namespace Caesar
         {
             if (CheckAndAdvanceBitflag(ref bitFlags) && dumpSize != null)
             {
-
                 // read the dump's offset relative to our current block
                 int dumpOffset = ReadInt32();
-                // save our reading cursor
-                long readerPosition = BaseStream.Position;
-                // seek to the specified offset, then read out the dump
-                BaseStream.Seek(dumpOffset + virtualBase, SeekOrigin.Begin);
-                byte[] result = ReadBytes((int)dumpSize);
-                // restore our reading cursor
-                BaseStream.Seek(readerPosition, SeekOrigin.Begin);
-                return result;
+
+                return ReadDump(dumpOffset + virtualBase, (int)dumpSize);
             }
             else
             {

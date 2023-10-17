@@ -34,8 +34,26 @@ namespace Caesar
             //    File.WriteAllText(file.Replace(".cbf", ".json"), CaesarContainer.SerializeContainer(container));
             //    //Console.ReadKey();
             //}
-            CaesarContainer container = new CaesarContainer(File.ReadAllBytes(Path.Combine(Environment.CurrentDirectory, @"Data\cbf\ACM301T.31.00.209.cbf")));
-            File.WriteAllText("ACM301T.json", CaesarContainer.SerializeContainer(container));
+            CaesarContainer container = new CaesarContainer(File.ReadAllBytes(Path.Combine(Environment.CurrentDirectory, @"Data\cbf\CPC2.1.20.19.cbf")));
+            int unknown_index = 0;
+            string outName_base = container.CaesarCFFHeader.CaesarCTFHeader.CtfModuleName ?? "UNK_MOD" + (unknown_index++); 
+            if (container.CaesarCFFHeader.DscTable != null)
+            {
+                var dscObjs = container.CaesarCFFHeader.DscTable.GetObjects();
+                for (int i = 0; i < dscObjs.Count; i++)
+                {
+                    for(int j = 0; j < dscObjs[i].DscFile.Functions.Values.Count; j++)
+                    {
+                        var funcObj = dscObjs[i].DscFile.Functions.Values[j];
+                        if (funcObj.InstructionDump.Length > 0)
+                        {
+                            string fullName = $"{outName_base}_DSC{i}_FUNC_{j}_{funcObj.Name}.txt";
+                            File.WriteAllText(fullName, BitUtility.BytesToHex(funcObj.InstructionDump, true));
+                        }
+                    }
+                }
+            }
+            File.WriteAllText(outName_base + ".json", CaesarContainer.SerializeContainer(container));
         }
 
         static void LoadFilePaths(string path, List<string> result)

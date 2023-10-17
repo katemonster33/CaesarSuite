@@ -19,7 +19,7 @@ namespace Caesar
         private int? DscOffset;
         private int? DscCount;
         private int? DscEntrySize;
-        public CaesarTable<DSCContext>? DscTable;
+        public CaesarTable<DSCContainer>? DscTable;
         public string? CbfVersionString;
         public string? GpdVersionString;
         public string? XmlString;
@@ -66,11 +66,11 @@ namespace Caesar
                 var oldPos = AbsoluteAddress;
 
                 AbsoluteAddress = (int)StringPoolSize + CffHeaderSize + 0x414;
-                DscTable = new CaesarTable<DSCContext>()
+                DscTable = new CaesarTable<DSCContainer>()
                 {
                     RelativeAddress = (int)DscOffset,
-                    EntryCount = (int)DscEntrySize,
-                    EntrySize = (int)DscCount,
+                    EntryCount = (int)DscCount,
+                    EntrySize = (int)DscEntrySize,
                     BlockSize = (int)DscEntrySize * DscCount
                 };
                 DscTable.Read(reader, this, container);
@@ -90,6 +90,15 @@ namespace Caesar
                     DscBlockSize = (int)(DscEntrySize * DscCount);
                     reader.BaseStream.Seek(DscBlockOffset, SeekOrigin.Begin);
                     DSCPool = reader.ReadBytes(DscBlockSize);
+                    for (int i  = 0; i < DscCount; i++)
+                    {
+                        int dscFileOffset = BitConverter.ToInt32(DSCPool, i * 8);
+                        int dscFileSize = BitConverter.ToInt32(DSCPool, i * 8 + 4);
+                        long oldPos = reader.BaseStream.Position;
+                        reader.BaseStream.Seek(dscFileOffset + DscBlockOffset, SeekOrigin.Begin);
+                        File.WriteAllBytes("ACM_DSC_" + i + ".CCF", reader.ReadBytes(dscFileSize));
+                        reader.BaseStream.Seek(oldPos, SeekOrigin.Begin);
+                    }
                 }
             }
             CaesarCTFHeader.LoadStrings(reader, CffHeaderSize);

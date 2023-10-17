@@ -47,7 +47,14 @@ namespace Caesar
                 // VerifyChecksum(fileBytes, out uint checksum);
                 FileChecksum = ReadFileChecksum(fileBytes);
 
-                ReadCFFDefinition(reader);
+                CaesarCFFHeader = new CFFHeader(reader, this);
+                CaesarCTFHeader = CaesarCFFHeader.CaesarCTFHeader;
+                // CaesarCFFHeader.PrintDebug();
+
+                if (CaesarCFFHeader.CaesarVersion < 400)
+                {
+                    throw new NotImplementedException($"Unhandled Caesar version: {CaesarCFFHeader.CaesarVersion}");
+                }
                 // language is the highest priority since all our strings come from it
                 ReadECU(reader);
 
@@ -217,36 +224,6 @@ namespace Caesar
             //        CaesarECUs.Add(new ECU(fileReader, GetLanguage(), CaesarCFFHeader, ecuTableOffset + offsetToActualEcuEntry, this));
             //    }
             //}
-        }
-
-
-        void ReadCFFDefinition(CaesarReader fileReader)
-        {
-            CaesarCFFHeader = new CFFHeader(fileReader, this);
-            CaesarCTFHeader = CaesarCFFHeader.CaesarCTFHeader;
-            // CaesarCFFHeader.PrintDebug();
-
-            if (CaesarCFFHeader.CaesarVersion < 400) 
-            {
-                throw new NotImplementedException($"Unhandled Caesar version: {CaesarCFFHeader.CaesarVersion}");
-            }
-
-            //int caesarStringTableOffset = CaesarCFFHeader.CffHeaderSize + 0x410 + 4;
-            //int formEntryTable = caesarStringTableOffset + CaesarCFFHeader.StringPoolSize;
-                
-            //Console.WriteLine($"{nameof(caesarStringTableOffset)} : 0x{caesarStringTableOffset:X}");
-            //Console.WriteLine($"{nameof(afterStringTableOffset)} : 0x{afterStringTableOffset:X}");
-
-            /*
-            if (CaesarCFFHeader.FormEntries > 0)
-            {
-                int formOffsetTable = CaesarCFFHeader.unk2RelativeOffset + formEntryTable;
-                int formOffsetTableSize = CaesarCFFHeader.FormEntrySize * CaesarCFFHeader.FormEntries;
-                Console.WriteLine($"after string table block (*.fm) is present: {nameof(formEntryTable)} : 0x{formEntryTable:X}\n\n");
-                Console.WriteLine($"{nameof(formOffsetTable)} : 0x{formOffsetTable:X}\n\n");
-                Console.WriteLine($"{nameof(formOffsetTableSize)} : 0x{formOffsetTableSize:X}\n\n");
-            }
-            */
         }
 
         public string GetFileSize() 

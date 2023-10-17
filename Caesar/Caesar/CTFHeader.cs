@@ -43,8 +43,7 @@ namespace Caesar
             short? stmp = reader.ReadBitflagInt16(ref Bitflags);
             if(stmp != null)
             {
-                byte[] bytes = reader.ReadBytes((int)stmp);
-                CtfModuleName = Encoding.UTF8.GetString(bytes);
+                CtfModuleName = reader.ReadString(Encoding.UTF8);
             }
         }
 

@@ -7,14 +7,15 @@ using System.Threading.Tasks;
 
 namespace Caesar.DSC
 {
-    public class GlobalVariable : CaesarObject
+    public class GlobalVariable : DscObject
     {
         public string Name;
         public BasicType BasicType;
         public DerivedType DerivedType;
-        public int ArraySize;
-        public int GlobalBytePosition;
+        public ushort ArraySize;
+        public ushort GlobalBytePosition;
         public byte[] DataBuffer = new byte[0];
+
         public GlobalVariable()
         {
             Name = string.Empty;
@@ -24,20 +25,13 @@ namespace Caesar.DSC
             GlobalBytePosition = 0;
         }
 
-        protected override bool ReadHeader(CaesarReader reader)
+        public void Read(CaesarReader reader)
         {
-            var parentDsc = GetParentByType<DSCContext>();
-            Name = reader.ReadStringByAddress(parentDsc != null ? parentDsc.AbsoluteAddress : 0);
+            Name = reader.ReadStringByAddress(0);
             BasicType = (BasicType)reader.ReadInt16();
             DerivedType = (DerivedType)reader.ReadInt16();
-            ArraySize = reader.ReadInt16();
-            GlobalBytePosition = reader.ReadInt16();
-            return true;
-        }
-
-        protected override void ReadData(CaesarReader reader, CaesarContainer container)
-        {
-            throw new NotImplementedException();
+            ArraySize = reader.ReadUInt16();
+            GlobalBytePosition = reader.ReadUInt16();
         }
 
         int GetBasicByteSize()
@@ -84,6 +78,11 @@ namespace Caesar.DSC
         {
             DataBuffer = new byte[GetByteSize()];
             Buffer.BlockCopy(globalBuffer, GlobalBytePosition, DataBuffer, 0, DataBuffer.Length);
+        }
+
+        public override string ToString()
+        {
+            return $"Name: {Name}, Address: {GlobalBytePosition}";
         }
     }
 }
