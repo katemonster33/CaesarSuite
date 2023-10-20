@@ -109,7 +109,7 @@ namespace Caesar
                         if (parentEcu.GlobalInternalPresentations != null)
                         {
                             Presentation = parentEcu.GlobalInternalPresentations.GetObjects()[(int)InfoPoolIndex];
-                            resultBitSize = GetBitSizeFromPresentation(Presentation);
+                            resultBitSize = Presentation.GetBitSize();
                         }
                     }
                     else if (modeE == 0x2000 && PresPoolIndex != null)
@@ -118,7 +118,7 @@ namespace Caesar
                         if (parentEcu.GlobalPresentations != null)
                         {
                             Presentation = parentEcu.GlobalPresentations.GetObjects()[(int)PresPoolIndex];
-                            resultBitSize = GetBitSizeFromPresentation(Presentation);
+                            resultBitSize = Presentation.GetBitSize();
                         }
                     }
                     else 
@@ -250,26 +250,6 @@ namespace Caesar
             SizeInBits = resultBitSize;
         }
 
-        private int GetBitSizeFromPresentation(DiagPresentation pres)
-        {
-            int resultBitSize = 0;
-            if (pres.TypeLength_1A != null && pres.TypeLength_1A > 0)
-            {
-                resultBitSize = (int)pres.TypeLength_1A;
-            }
-            else if(pres.TypeLengthBytesMaybe_21 != null)
-            {
-                resultBitSize = (int)pres.TypeLengthBytesMaybe_21;
-            }
-
-            // if value was specified in bytes, convert to bits
-            if (pres.Type_1C != null && pres.Type_1C == 0)
-            {
-                resultBitSize *= 8;
-            }
-
-            return resultBitSize;
-        }
 
         public void PrintDebug()
         {

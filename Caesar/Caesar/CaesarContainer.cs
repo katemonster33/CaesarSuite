@@ -70,7 +70,7 @@ namespace Caesar
 
         public static string SerializeContainer(CaesarContainer container) 
         {
-            return JsonConvert.SerializeObject(container, typeof(CaesarContainer), new JsonSerializerSettings() { Formatting = Formatting.Indented, DefaultValueHandling = DefaultValueHandling.Ignore });
+            return JsonConvert.SerializeObject(container, typeof(CaesarContainer), new JsonSerializerSettings() { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore });
         }
 
         public static CaesarContainer? DeserializeContainer(string json) 

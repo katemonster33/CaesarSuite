@@ -225,12 +225,17 @@ namespace Caesar
             return null;
         }
 
+        public CaesarStringReference ReadStringRef(CaesarContainer container)
+        {
+            int id = ReadInt32();
+            return new CaesarStringReference(container, id);
+        }
+
         public CaesarStringReference? ReadBitflagStringRef(ref ulong bitFlags, CaesarContainer container)
         {
             if (CheckAndAdvanceBitflag(ref bitFlags))
             {
-                int id = ReadInt32();
-                return new CaesarStringReference(container, id);
+                return ReadStringRef(container);
             }
             return null;
         }

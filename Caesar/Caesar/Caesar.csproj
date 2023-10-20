@@ -1,10 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net6.0-windows</TargetFrameworks>
-    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net6.0</TargetFrameworks>
+    <OutputType>Library</OutputType>
     <RootNamespace>Caesar</RootNamespace>
     <AssemblyName>Caesar</AssemblyName>
-    <ApplicationIcon>caesar_256.ico</ApplicationIcon>
     <Version>1.5.2</Version>
     <Nullable>enable</Nullable>
 	<Copyright>Copyright ©  2020</Copyright>

@@ -134,14 +134,19 @@ namespace Caesar
                     BitLength = CaesarStructure.ReadCBFWithOffset(0x21, CaesarStructure.StructureName.PRESENTATION_STRUCTURE, presentationStruct); // ???
                 }
                 */
-                if (pres.TypeLength_1A != null && pres.TypeLengthBytesMaybe_21 != null && pres.Type_1C != null)
+                BitLength = 0;
+                if(pres.FixedLength != null)
                 {
-                    BitLength = (int)(pres.TypeLength_1A > 0 ? pres.TypeLength_1A : pres.TypeLengthBytesMaybe_21);
-                    // if value was specified in bytes, convert to bits
-                    if (pres.Type_1C == 0)
-                    {
-                        BitLength *= 8;
-                    }
+                    BitLength = (int)pres.FixedLength;
+                }
+                else if(pres.MaxLength != null)
+                {
+                    BitLength = (int)pres.MaxLength;
+                }
+                // if value was specified in bytes, convert to bits
+                if (pres.DataType == Enums.DataType.Byte)
+                {
+                    BitLength *= 8;
                 }
             }
             else

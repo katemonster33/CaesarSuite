@@ -64,8 +64,6 @@ namespace Caesar.DSC
             FileName = reader.ReadString(Encoding.UTF8);
             reader.BaseStream.Seek(0xE6, SeekOrigin.Begin);
             FileDescription = reader.ReadString(Encoding.UTF8);
-            byte[] bytes5 = ReadBytesFromOffset(reader, newOffset2);
-            byte[] bytes6 = ReadBytesFromOffset(reader, newOffset3);
             long oldPos = reader.BaseStream.Position;
             reader.BaseStream.Seek(newOffset2, SeekOrigin.Begin);
             long oldPos2 = reader.BaseStream.Position;
@@ -84,14 +82,6 @@ namespace Caesar.DSC
             reader.BaseStream.Seek(oldPos2, SeekOrigin.Begin);
 
             reader.BaseStream.Seek(oldPos, SeekOrigin.Begin);
-        }
-        byte[] ReadBytesFromOffset(CaesarReader reader, long address)
-        {
-            long oldPos = reader.BaseStream.Position;
-            reader.BaseStream.Seek(address, SeekOrigin.Begin);
-            byte[] bytes = reader.ReadBytes(256);
-            reader.BaseStream.Seek(oldPos, SeekOrigin.Begin);
-            return bytes;
         }
     }
 }

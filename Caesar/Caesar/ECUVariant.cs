@@ -253,6 +253,7 @@ namespace Caesar
                     {
                         dsTmp.Add(globalDiagServices[idx]);
                     }
+                    DiagServices = dsTmp.ToArray();
                 }
             }
         }
