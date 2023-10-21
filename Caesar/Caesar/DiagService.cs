@@ -39,6 +39,7 @@ namespace Caesar
         }
 
         public int DataSize { get; set; }
+        public int Config = 0;
 
         public string? Qualifier;
 
@@ -76,8 +77,8 @@ namespace Caesar
         public int? P_Count; // global vars?
         public int? P_Offset;
 
-        private int? DiagServiceCodeCount;
-        private int? DiagServiceCodeOffset;
+        CaesarTable<DscPoolItem>? DiagServicePoolIndices;
+        public List<Tuple<string, DSC.DSCContainer>> DiagServiceCodes = new List<Tuple<string, DSC.DSCContainer>>();
 
         private int? S_Count;
         private int? S_Offset;
@@ -133,7 +134,7 @@ namespace Caesar
 
         public void PrintDebug() 
         {
-            Console.WriteLine($"{Qualifier} - ReqBytes: {RequestBytes}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, ComParams: {DiagComParameters}, Preparation: {InputPreparations}, V: {V_Count}, OutPres: {OutputPreparations}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodeCount}, field50: {Field50}");
+            Console.WriteLine($"{Qualifier} - ReqBytes: {RequestBytes}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, ComParams: {DiagComParameters}, Preparation: {InputPreparations}, V: {V_Count}, OutPres: {OutputPreparations}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodes}, field50: {Field50}");
             Console.WriteLine($"BaseAddress @ 0x{AbsoluteAddress:X}, NR: {NegativeResponseName}");
             Console.WriteLine($"V @ 0x{AbsoluteAddress + V_Offset:X}, count: {V_Count}");
         }
@@ -143,7 +144,7 @@ namespace Caesar
             RelativeAddress = reader.ReadInt32();
             DataSize = reader.ReadInt32();
             uint crc = reader.ReadUInt32();
-            uint config = reader.ReadUInt16();
+            Config = reader.ReadUInt16();
 
             return true;
         }
@@ -173,6 +174,19 @@ namespace Caesar
 					cp.InsertIntoEcu(parentEcu);
 				}
 			}
+            DiagServiceCodes.Clear();
+            var cffHeader = GetParentByType<CFFHeader>();
+            if(DiagServicePoolIndices != null && cffHeader != null && cffHeader.DscTable != null)
+            {
+                var dscItems = cffHeader.DscTable.GetObjects();
+                foreach(var dscPoolItem in DiagServicePoolIndices.GetObjects())
+                {
+                    if (dscPoolItem.Qualifier != null)
+                    {
+                        DiagServiceCodes.Add(new Tuple<string, DSC.DSCContainer>(dscPoolItem.Qualifier, dscItems[dscPoolItem.PoolIndex]));
+                    }
+                }
+            }
         }
 
         protected override void ReadData(CaesarReader reader, CaesarContainer container)
@@ -217,7 +231,6 @@ namespace Caesar
             // FIXME: run it through the entire dbr cbf directory, check if any file actually has more than 1 item in ResultPresentationSet
             OutputPreparations = reader.ReadBitflagSubTableAlt<DiagOutPreparationList>(this, container);
 
-
             Field50 = reader.ReadBitflagUInt16(ref Bitflags);
 
             NegativeResponseName = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress); // negative response name
@@ -227,8 +240,7 @@ namespace Caesar
             P_Count = reader.ReadBitflagInt32(ref Bitflags);
             P_Offset = reader.ReadBitflagInt32(ref Bitflags);
 
-            DiagServiceCodeCount = reader.ReadBitflagInt32(ref Bitflags);
-            DiagServiceCodeOffset = reader.ReadBitflagInt32(ref Bitflags);
+            DiagServicePoolIndices = reader.ReadBitflagSubTableAlt<DscPoolItem>(this, container);
 
             S_Count = reader.ReadBitflagInt16(ref Bitflags);
             S_Offset = reader.ReadBitflagInt32(ref Bitflags);
@@ -269,48 +281,6 @@ namespace Caesar
             */
             //Console.WriteLine($"{qualifierName} - O: {RequestBytes_Count}, P: {P_Count}, Q: {Q_Count}, R: {R_Count}, S: {S_Count}, T: {T_Count}, U: {U_Count}, V: {V_Count}, W: {W_Count}, X: {X_Count}, Y: {Y_Count}, Z: {Z_Count}, DSC {DiagServiceCodeCount}");
 
-
-            byte[] dscPool = ParentECU.CFFHeader.DSCPool;
-            if (DiagServiceCodeOffset != null && DiagServiceCodeCount != null)
-            {
-                long dscTableBaseAddress = AbsoluteAddress + (long)DiagServiceCodeOffset;
-
-                using (BinaryReader dscPoolReader = new BinaryReader(new MemoryStream(dscPool)))
-                {
-                    for (int dscIndex = 0; dscIndex < DiagServiceCodeCount; dscIndex++)
-                    {
-                        reader.BaseStream.Seek(dscTableBaseAddress + (4 * dscIndex), SeekOrigin.Begin);
-                        long dscEntryBaseAddress = reader.ReadInt32() + dscTableBaseAddress;
-                        reader.BaseStream.Seek(dscEntryBaseAddress, SeekOrigin.Begin);
-
-                        ulong dscEntryBitflags = reader.ReadUInt16();
-                        uint? idk1 = reader.ReadBitflagUInt8(ref dscEntryBitflags);
-                        uint? idk2 = reader.ReadBitflagUInt8(ref dscEntryBitflags);
-                        int? dscPoolOffset = reader.ReadBitflagInt32(ref dscEntryBitflags);
-                        string? dscQualifier = reader.ReadBitflagStringWithReader(ref dscEntryBitflags, dscEntryBaseAddress);
-
-                        if (dscPoolOffset != null)
-                        {
-                            dscPoolReader.BaseStream.Seek((int)dscPoolOffset * 8, SeekOrigin.Begin);
-                            long dscRecordOffset = dscPoolReader.ReadInt32() + ParentECU.CFFHeader.DscBlockOffset;
-                            int dscRecordSize = dscPoolReader.ReadInt32();
-
-                            reader.BaseStream.Seek(dscRecordOffset, SeekOrigin.Begin);
-
-                            // Console.WriteLine($"DSC {qualifierName} @ 0x{dscTableBaseAddress:X8} {idk1}/{idk2} pool @ 0x{dscPoolOffset:X}, name: {dscQualifier}");
-                            byte[] dscBytes = reader.ReadBytes(dscRecordSize);
-#if DEBUG
-                            //string dscName = $"{parentEcu.Qualifier}_{Qualifier}_{dscIndex}.pal";
-                            //Console.WriteLine($"Exporting DSC: {dscName}");
-                            //File.WriteAllBytes(dscName, dscBytes);
-#endif
-                            // at this point, the DSC binary is available in dscBytes, intended for use in DSCContext (but is currently unimplemented)
-                            // Console.WriteLine($"DSC actual at 0x{dscRecordOffset:X}, size=0x{dscRecordSize:X}\n");
-                        }
-                    }
-
-                }
-            }
         }
     }
 }

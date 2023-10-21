@@ -33,9 +33,9 @@ namespace Diogenes
             VisiblePreparations.RaiseListChangedEvents = false;
             VisiblePreparations.Clear();
 
-            if (Service != null)
+            if (Service != null && Service.InputPreparations != null)
             {
-                foreach (var prep in Service.InputPreparationPresentations)
+                foreach (var prep in Service.InputPreparations.GetObjects())
                 {
                     VisiblePreparations.Add(prep.DeepCopy());
                 }
@@ -104,17 +104,20 @@ namespace Diogenes
             }
 
             StringBuilder sb = new StringBuilder();
-            // transform the response to a human-readable string
-            foreach (var prepSets in Service.OutputPreparations)
+            if(Service.OutputPreparations != null)
             {
-                foreach (var prep in prepSets)
+                // transform the response to a human-readable string
+                foreach (var prepSets in Service.OutputPreparations.GetObjects())
                 {
-                    // seems like even diag scripts have a return value: see {PRES_TEXTTABLE_SecurityAccess [8] @ 0} in crd3: ..9a
-                    var prepPres = prep.ParentECU.GlobalPresentations[prep.PresPoolIndex];
-                    sb.AppendLine($"{prep.Qualifier} [{prep.SizeInBits}] @ {prep.BitPosition}");
-                    BitArray responseAsBits = new BitArray(Response);
-                    BitArray sliced = BitArrayExtension.Slice(responseAsBits, prep.BitPosition, prep.SizeInBits);
-                    sb.AppendLine($"{prepPres.DescriptionString}: {prepPres.Interpret(sliced)}");
+                    foreach (var prep in prepSets.GetObjects())
+                    {
+                        // seems like even diag scripts have a return value: see {PRES_TEXTTABLE_SecurityAccess [8] @ 0} in crd3: ..9a
+                        var prepPres = prep.Presentation;
+                        sb.AppendLine($"{prep.Qualifier} [{prep.SizeInBits}] @ {prep.BitPosition}");
+                        BitArray responseAsBits = new BitArray(Response);
+                        BitArray sliced = BitArrayExtension.Slice(responseAsBits, prep.BitPosition, prep.SizeInBits);
+                        sb.AppendLine($"{prepPres.Description?.Text}: {prepPres.Interpret(sliced)}");
+                    }
                 }
             }
             return sb.ToString();
@@ -139,9 +142,9 @@ namespace Diogenes
         public void DoDiagServiceScripts()
         {
             // run diag script
-            foreach (var script in Service.DiagServiceCode)
+            foreach (var script in Service.DiagServiceCodes)
             {
-                RunSingleDiagScript(script.Qualifier, script.ScriptBytes);
+                RunSingleDiagScript(script.Item1, script.Item2.ScriptBytes);
             }
         }
 
@@ -182,21 +185,38 @@ namespace Diogenes
         }
         public int GetPrepParamDumpLength(int index)
         {
-            return Service.InputPreparations[index].Dump.Length;
+            if(Service.InputPreparations != null)
+            {
+                var prep = Service.InputPreparations.GetObjects()[index];
+                if(prep.Dump != null)
+                {
+                    return prep.Dump.Length;
+                }
+            }
+            return 0;
         }
 
         public int GetPresParamDumpLength(int index)
         {
-            return Service.OutputPreparations[0][index].SizeInBits / 8;
+            if(Service.OutputPreparations != null)
+            {
+                var prep = Service.OutputPreparations.GetObjects()[0].GetObjects()[index];
+                return prep.SizeInBits / 8;
+            }
+            return 0;
         }
 
         public byte[] GetDumpPresParam(int index)
         {
-            var pres = Service.OutputPreparations[0][index];
-            BitArray dump = new BitArray(Response);
-            BitArray slice = BitArrayExtension.Slice(dump, pres.BitPosition, pres.SizeInBits);
-            byte[] sliceBytes = BitArrayExtension.ToBytes(slice);
-            return sliceBytes;
+            if(Service.OutputPreparations != null)
+            {
+                var pres = Service.OutputPreparations.GetObjects()[0].GetObjects()[index];
+                BitArray dump = new BitArray(Response);
+                BitArray slice = BitArrayExtension.Slice(dump, pres.BitPosition, pres.SizeInBits);
+                byte[] sliceBytes = BitArrayExtension.ToBytes(slice);
+                return sliceBytes;
+            }
+            return new byte[0];
         }
 
         public void SetDumpPreparationParam(int index, byte[] value)
@@ -234,21 +254,25 @@ namespace Diogenes
         }
         public string GetStringPresentationParam(int index) 
         {
-            var prep = Service.OutputPreparations[0][index];
+            if (Service.OutputPreparations != null)
+            {
+                var prep = Service.OutputPreparations.GetObjects()[0].GetObjects()[index];
 
-            // seems like even diag scripts have a return value: see {PRES_TEXTTABLE_SecurityAccess [8] @ 0} in crd3: ..9a
-            var prepPres = Service.ParentECU.GlobalPresentations[prep.PresPoolIndex];
+                // seems like even diag scripts have a return value: see {PRES_TEXTTABLE_SecurityAccess [8] @ 0} in crd3: ..9a
+                var prepPres = prep.Presentation;
 
-            BitArray responseAsBits = new BitArray(Response);
-            BitArray sliced = BitArrayExtension.Slice(responseAsBits, prep.BitPosition, prep.SizeInBits);
-            string result = $"{prepPres.Interpret(sliced)}\0"; // insert null terminator
-            
-            // fixme: this is definitely borked, entriegeln_bc compares the output with a string to check if the response is valid
-            // it just happens that the path it takes is what we want
-            // check the subsequent strcmp to get an idea of what it is looking for
-            Console.WriteLine($"GetStringPresentationParam: {result}");
-            return result;
+                BitArray responseAsBits = new BitArray(Response);
+                BitArray sliced = BitArrayExtension.Slice(responseAsBits, prep.BitPosition, prep.SizeInBits);
+                string result = $"{prepPres.Interpret(sliced)}\0"; // insert null terminator
 
+                // fixme: this is definitely borked, entriegeln_bc compares the output with a string to check if the response is valid
+                // it just happens that the path it takes is what we want
+                // check the subsequent strcmp to get an idea of what it is looking for
+                Console.WriteLine($"GetStringPresentationParam: {result}");
+                return result;
+
+            }
+            else return string.Empty;
             // seems to read the scaled value (name) from the output presentation
             // return "hello\0";
 

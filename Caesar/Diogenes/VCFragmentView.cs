@@ -15,7 +15,7 @@ namespace Diogenes
         { 
             get 
             {
-                return Fragment.ParentECU.Language.GetString(Fragment.Name_CTF);
+                return Fragment.Name != null ? Fragment.Name.Text : string.Empty;
             } 
         }
 

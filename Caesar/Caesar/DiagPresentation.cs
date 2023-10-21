@@ -1,5 +1,6 @@
 using Caesar.Enums;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -68,6 +69,114 @@ namespace Caesar
 
         // 0x05 [6,   4,4,4,4,  4,4,4,4,  4,4,4,4,  2,2,2,4,      4,4,4,4,   4,4,4,4,   4,4,1,1,  1,1,1,4,     4,4,2,4,   4,4],
 
+        public string Interpret(BitArray valueToInterpret)
+        {
+            string response = "";
+            var dataType = GetPresType();
+            switch (dataType)
+            {
+                case PresentationTypes.PresBasicEnum:
+                    if(Choices != null)
+                    {
+                        // check conversion, might be faulty
+                        int map = BitArrayExtension.PromoteToInt32(valueToInterpret, true);
+                        foreach (var entry in Choices)
+                        {
+                            if (entry.Value == map)
+                            {
+                                response += $"{entry.Text.Text}";
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                case PresentationTypes.PresBytes:
+                    {
+                        byte[] val = BitArrayExtension.ToBytes(valueToInterpret);
+                        response += BitUtility.BytesToHex(val, true);
+                        break;
+                    }
+                case PresentationTypes.PresInt:
+                    {
+                        response += BitArrayExtension.PromoteToInt32(valueToInterpret, true).ToString();
+                        break;
+                    }
+                case PresentationTypes.PresUInt:
+                    {
+                        response += BitArrayExtension.PromoteToUInt32(valueToInterpret, true).ToString();
+                        break;
+                    }
+                case PresentationTypes.PresScaledDecimal:
+                    if(Scales != null)
+                    {
+                        decimal inputAsDecimal = BitArrayExtension.PromoteToInt32(valueToInterpret, true);
+                        var scale = Scales.GetObjects()[0];
+                        // apply scale transform on raw number
+                        decimal scaledValue = inputAsDecimal;
+                        scaledValue *= (decimal)(scale.MultiplyFactor ?? 0);
+                        scaledValue += (decimal)(scale.AddConstOffset ?? 0);
+
+                        // scaled decimals don't require bounds check, they _have_ to fit
+                        response += $"{scale.EnumDescription?.Text}: {scaledValue} {DisplayedUnit?.Text}";
+
+                    }
+                    break;
+                case PresentationTypes.PresString:
+                    {
+                        // fixme: need to differentiate between ascii and unicode
+                        response += Encoding.ASCII.GetString(BitArrayExtension.ToBytes(valueToInterpret));
+                        break;
+                    }
+                case PresentationTypes.PresScaledEnum:
+                    if(Scales != null)
+                    {
+                        bool scaleFound = false;
+                        decimal inputAsDecimal = BitArrayExtension.PromoteToInt32(valueToInterpret, true);
+
+                        // search through all scales in presentation
+                        foreach (var scale in Scales.GetObjects())
+                        {
+                            // apply scale transform on raw number
+                            decimal scaledValue = inputAsDecimal;
+                            if (scale.MultiplyFactor != 0)
+                            {
+                                scaledValue *= (decimal)(scale.MultiplyFactor ?? 1);
+                                scaledValue += (decimal)(scale.AddConstOffset ?? 0);
+                            }
+
+                            // check if scale fits within enum bounds
+                            int scaledValueInt = (int)scaledValue;
+                            if ((scaledValueInt >= scale.EnumLowBound) && (scaledValueInt <= scale.EnumUpBound))
+                            {
+                                scaleFound = true;
+                                response += $"{scale.EnumDescription?.Text}";
+                            }
+                        }
+
+                        if (!scaleFound)
+                        {
+                            response += $"(no matching scale found)";
+                            // dump all scales
+
+                            foreach (var scale in Scales.GetObjects())
+                            {
+                                decimal scaledValue = inputAsDecimal;
+                                scaledValue *= (decimal)(scale.MultiplyFactor ?? 1);
+                                scaledValue += (decimal)(scale.AddConstOffset ?? 0);
+
+                                Console.WriteLine($"{scale.EnumDescription?.Text} Mul: {scale.MultiplyFactor} Add: {scale.AddConstOffset} Raw: {inputAsDecimal} Scaled: {scaledValue}, Enum bounds: [{scale.EnumLowBound}/{scale.EnumUpBound}]");
+                            }
+                        }
+                    }
+                    break;
+                default:
+                    {
+                        response += $"No handler defined for type {dataType}";
+                        break;
+                    }
+            }
+            return response;
+        }
 
         public string InterpretData(byte[] inBytes, DiagPreparation inPreparation, bool describe = true)
         {
@@ -274,6 +383,78 @@ namespace Caesar
             }
 
             return resultBitSize;
+        }
+
+        public PresentationTypes GetPresType()
+        {
+            // might be relevant: DMPrepareSingleDatum, DMPresentSingleDatum
+
+            if (NumberChoices != null)
+            {
+                return PresentationTypes.PresBasicEnum;
+            }
+
+            /*
+            // can we determine booleans without peeking at the parent prep?
+            // handle booleans first since they're the edge case where they can cross byte boundaries
+            if (inPreparation.SizeInBits == 1)
+            {
+                return PresentationTypes.PresBoolean;
+            }
+            */
+
+            var rawDataType = GetDataType();
+
+            if ((rawDataType == ParamType.Unknown) && (Scales != null && Scales.Count == 1))
+            {
+                // jg : added a scales.count == 1 constraint so that scaled enums don't get stuck here
+                return PresentationTypes.PresScaledDecimal;
+            }
+            else if (rawDataType == ParamType.Float)
+            {
+                if (InternalDataType == InternalDataType.Float)
+                {
+                    // interpret as big-endian float, https://github.com/jglim/CaesarSuite/issues/37 from @prj
+                    return PresentationTypes.PresIEEEFloat;
+                }
+                else if (InternalDataType == InternalDataType.Raw)
+                {
+                    // ic204: rt_art .. segment bit (bool), PREP_Anzahl_2Byte (unsigned)
+                    return PresentationTypes.PresUInt;
+                }
+                // no idea how to handle edge cases, defaulting to uint here
+                throw new Exception($"Presentation: unhandled type {rawDataType}/{InternalDataType} for {Qualifier}");
+            }
+            else if (rawDataType == ParamType.Choice)
+            {
+                return PresentationTypes.PresBytes;
+            }
+            else if ((rawDataType == ParamType.String) || (rawDataType == ParamType.Unicode))
+            {
+                // 17 regular ascii
+                // 22 unicode
+                return PresentationTypes.PresString;
+            }
+
+            // enums evaluated last
+            bool isEnumType = !Signed && (DataType == DataType.Bit || (Scales != null && Scales.Count > 1));
+
+            // hack: sometimes hybrid types (regularly parsed as an scaled value if within bounds) are misinterpreted as pure enums
+            // this is a temporary fix for kilometerstand until there's a better way to ascertain its type
+            // this also won't work on other similar cases without a unit string e.g. error instance counter (Häufigkeitszähler)
+            if (DisplayedUnit != null && DisplayedUnit.Text == "km")
+            {
+                isEnumType = false;
+            }
+
+            if (isEnumType)
+            {
+                // discovered by @VladLupashevskyi in https://github.com/jglim/CaesarSuite/issues/27
+                // if an enum is specified, the inclusive upper bound and lower bound will be defined in the scale object
+                return PresentationTypes.PresScaledEnum;
+            }
+
+            throw new Exception($"Could not assign a type to presentation {Qualifier}");
         }
 
         public ParamType GetDataType()

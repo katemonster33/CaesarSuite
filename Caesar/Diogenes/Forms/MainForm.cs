@@ -133,15 +133,20 @@ namespace Diogenes.Forms
         private void RefreshProtocolList()
         {
             cbProtocol.Items.Clear();
-            if (DiogenesSharedContext.Singleton.PrimaryContainer is null) 
+            if (DiogenesSharedContext.Singleton.PrimaryContainer is null || 
+                DiogenesSharedContext.Singleton.PrimaryEcu.ECUInterfaceSubtypes == null || 
+                DiogenesSharedContext.Singleton.PrimaryEcu.ECUInterfaces == null) 
             {
                 return;
             }
-            foreach (var iface in DiogenesSharedContext.Singleton.PrimaryEcu.ECUInterfaceSubtypes)
+            foreach (var iface in DiogenesSharedContext.Singleton.PrimaryEcu.ECUInterfaceSubtypes.GetObjects())
             {
-                var physicalProtocol = iface.PhysicalProtocol;
-                var diagProtocol = DiogenesSharedContext.Singleton.PrimaryEcu.ECUInterfaces[iface.ParentInterfaceIndex].Qualifier;
-                cbProtocol.Items.Add(iface.Qualifier);
+                if (iface.ParentInterfaceIndex != null)
+                {
+                    var physicalProtocol = iface.PhysicalProtocol;
+                    var diagProtocol = DiogenesSharedContext.Singleton.PrimaryEcu.ECUInterfaces.GetObjects()[(int)iface.ParentInterfaceIndex].Qualifier;
+                    cbProtocol.Items.Add(iface.Qualifier);
+                }
             }
             if (cbProtocol.Items.Count > 0)
             {
@@ -227,14 +232,17 @@ namespace Diogenes.Forms
             dgvPreConnectComParams.Suspend();
 
             DiogenesSharedContext.Singleton.PreConnectParameters.Clear();
-            foreach (var iface in DiogenesSharedContext.Singleton.PrimaryEcu.ECUInterfaceSubtypes)
+            if(DiogenesSharedContext.Singleton.PrimaryEcu.ECUInterfaceSubtypes != null)
             {
-                if (iface.Qualifier != cbProtocol.SelectedItem.ToString())
+                foreach (var iface in DiogenesSharedContext.Singleton.PrimaryEcu.ECUInterfaceSubtypes.GetObjects())
                 {
-                    continue;
+                    if (iface.Qualifier != cbProtocol.SelectedItem.ToString())
+                    {
+                        continue;
+                    }
+                    var comParams = iface.CommunicationParameters.ToDictionary(t => t.ComParamName, t => t.ComParamValue);
+                    comParams.ToList().ForEach(x => DiogenesSharedContext.Singleton.PreConnectParameters.Add(new DiogenesSharedContext.RawComParam { Name = x.Key, Value = x.Value }));
                 }
-                var comParams = iface.CommunicationParameters.ToDictionary(t => t.ParamName, t => t.ComParamValue);
-                comParams.ToList().ForEach(x => DiogenesSharedContext.Singleton.PreConnectParameters.Add(new DiogenesSharedContext.RawComParam { Name = x.Key, Value = x.Value }));
             }
 
             dgvPreConnectComParams.Resume();
@@ -322,15 +330,15 @@ namespace Diogenes.Forms
             }
 
             var ecu = DiogenesSharedContext.Singleton.PrimaryEcu;
-            var iface = ecu.ECUInterfaceSubtypes.FirstOrDefault(x => x.Qualifier == cbProtocol.SelectedItem.ToString());
-            if (iface is null)
+            var iface = ecu.ECUInterfaceSubtypes?.GetObjects().FirstOrDefault(x => x.Qualifier == cbProtocol.SelectedItem.ToString());
+            if (iface is null || iface.ParentInterfaceIndex == null)
             {
                 Console.WriteLine($"Please select a connection interface under Connection > Interface");
                 return;
             }
 
             var physicalProtocol = iface.PhysicalProtocol;
-            var diagProtocol = ecu.ECUInterfaces[iface.ParentInterfaceIndex].Qualifier;
+            var diagProtocol = ecu.ECUInterfaces?.GetObjects()[(int)iface.ParentInterfaceIndex].Qualifier;
 
             if (cbComDevices.SelectedItem is null)
             {
@@ -373,13 +381,19 @@ namespace Diogenes.Forms
                 Console.WriteLine($"ECU responded with variant ID: {variantId:X4}");
                 
                 ECUVariant result = null;
-                foreach (var variant in DiogenesSharedContext.Singleton.PrimaryEcu.ECUVariants) 
+                if(DiogenesSharedContext.Singleton.PrimaryEcu.ECUVariants != null)
                 {
-                    if (variant.VariantPatterns.Any(x => (x.VariantID & 0xFFFF) == variantId))
+                    foreach (var variant in DiogenesSharedContext.Singleton.PrimaryEcu.ECUVariants.GetObjects())
                     {
-                        Console.WriteLine($"Found matching variant: {variant.Qualifier}");
-                        result = variant;
-                        break;
+                        if(variant.VariantPatterns != null)
+                        {
+                            if (variant.VariantPatterns.GetObjects().Any(x => (x.VariantID & 0xFFFF) == variantId))
+                            {
+                                Console.WriteLine($"Found matching variant: {variant.Qualifier}");
+                                result = variant;
+                                break;
+                            }
+                        }
                     }
                 }
                 if (result is null) 

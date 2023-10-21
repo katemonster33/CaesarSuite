@@ -46,17 +46,20 @@ namespace Diogenes
 
             foreach (var segment in segments)
             {
-                long offset = datablock.FlashData + header.CffHeaderSize + header.LanguageBlockLength + fileCursor + 0x414;
-                fileCursor += segment.SegmentLength;
-                Span<byte> segmentBytes = bytes.Slice((int)offset, segment.SegmentLength);
-                DiogenesSharedContext.Singleton.Channel.TransferBlock(segment.FromAddress, segmentBytes);
+                if (segment.FromAddress != null && segment.SegmentLength != null)
+                {
+                    long offset = (datablock.FlashData ?? 0) + header.CffHeaderSize + (header.LanguageBlockLength ?? 0) + fileCursor + 0x414;
+                    fileCursor += (int)segment.SegmentLength;
+                    Span<byte> segmentBytes = bytes.Slice((int)offset, (int)segment.SegmentLength);
+                    DiogenesSharedContext.Singleton.Channel.TransferBlock((int)segment.FromAddress, segmentBytes);
 
-                // Console.WriteLine($"Segment: {segment.SegmentName} : FromAddress 0x{segment.FromAddress:X8} , SegmentLength 0x{segment.SegmentLength:X8}");
-                SegmentsDownloaded++;
-                SegmentName = segment.SegmentName;
-                FlashProgress = (int)(100.0 * SegmentsDownloaded / segments.Count);
+                    // Console.WriteLine($"Segment: {segment.SegmentName} : FromAddress 0x{segment.FromAddress:X8} , SegmentLength 0x{segment.SegmentLength:X8}");
+                    SegmentsDownloaded++;
+                    SegmentName = segment.SegmentName;
+                    FlashProgress = (int)(100.0 * SegmentsDownloaded / segments.Count);
 
-                FlashProgressChanged?.Invoke();
+                    FlashProgressChanged?.Invoke();
+                }
             }
         }
 

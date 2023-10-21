@@ -79,12 +79,15 @@ namespace Diogenes.Forms
                 }
                 else
                 {
-                    // pick from root diagservices
-                    foreach (var row in DiogenesSharedContext.Singleton.PrimaryEcu.GlobalDiagServices)
+                    if (DiogenesSharedContext.Singleton.PrimaryEcu.GlobalDiagServices != null)
                     {
-                        if (row.Qualifier.ToLower().Contains(filter))
+                        // pick from root diagservices
+                        foreach (var row in DiogenesSharedContext.Singleton.PrimaryEcu.GlobalDiagServices.GetObjects())
                         {
-                            VisibleDiagServices.Add(row);
+                            if (row.Qualifier.ToLower().Contains(filter))
+                            {
+                                VisibleDiagServices.Add(row);
+                            }
                         }
                     }
                 }
@@ -114,9 +117,9 @@ namespace Diogenes.Forms
                 SelectedDiagService = dgvDiagPicker.SelectedRows[0].DataBoundItem as DiagService;
                 string groupboxLabel = $"{RequestBuilderTitle} : {SelectedDiagService.Qualifier} ";
 
-                foreach (var dsc in SelectedDiagService.DiagServiceCode) 
+                foreach (var dsc in SelectedDiagService.DiagServiceCodes) 
                 {
-                    groupboxLabel += $"[Script: {dsc.Qualifier}] ";
+                    groupboxLabel += $"[Script: {dsc.Item1}] ";
                 }
                 DiagServiceToExecute = new DiagServiceRunner(SelectedDiagService);
                 dgvRequestBuilder.DataSource = DiagServiceToExecute.VisiblePreparations;
@@ -207,7 +210,7 @@ namespace Diogenes.Forms
                 // if it's a presentation, enable the editor
                 if (selectedPrep.FieldType == DiagPreparation.InferredDataType.PrepPresentationType)
                 {
-                    var prepPres = selectedPrep.ParentECU.GlobalPrepPresentations[selectedPrep.PrepPresPoolIndex];
+                    var prepPres = selectedPrep.Presentation;
 
                     // variable-length unicode strings will break things here, disable it
                     bool sliceLengthExceedsCurrentBitarrayLength = (selectedPrep.BitPosition + selectedPrep.SizeInBits) > DiagServiceToExecute.DiagBits.Length;

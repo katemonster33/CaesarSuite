@@ -11,6 +11,7 @@ namespace Caesar.DSC
     public class DSCContainer : CaesarObject
     {
         public DSCFile DscFile = new DSCFile();
+        public byte[] ScriptBytes = new byte[0];
         public int DataSize = 0;
 
         protected override bool ReadHeader(CaesarReader reader)
@@ -23,6 +24,7 @@ namespace Caesar.DSC
         protected override void ReadData(CaesarReader reader, CaesarContainer container)
         {
             byte[] dscBytes = reader.ReadBytes(DataSize);
+            ScriptBytes = dscBytes;
             CaesarReader dscReader = new CaesarReader(new MemoryStream(dscBytes, 0, dscBytes.Length, false, true));
             DscFile.Read(dscReader);
         }

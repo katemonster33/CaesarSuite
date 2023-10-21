@@ -54,14 +54,14 @@ namespace Diogenes.Forms
         private void cbVcdPicker_SelectedIndexChanged(object sender, EventArgs e)
         {
             var vcd = cbVcdPicker.SelectedItem as VCDomain;
-            if (vcd is null) 
+            if (vcd is null || vcd.VCFragments == null) 
             {
                 return;
             }
             Console.WriteLine($"R:{vcd.ReadServiceName}, W:{vcd.WriteServiceName}");
 
             Fragments.Clear();
-            foreach (var fragment in vcd.VCFragments) 
+            foreach (var fragment in vcd.VCFragments.GetObjects()) 
             {
                 //Console.WriteLine($"{fragment}");
                 Fragments.Add(new VCFragmentView(vcd, fragment));

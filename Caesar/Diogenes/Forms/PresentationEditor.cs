@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Caesar;
+using Caesar.Enums;
 
 namespace Diogenes.Forms
 {
@@ -30,9 +31,9 @@ namespace Diogenes.Forms
             var presType = ActivePresentation.GetDataType();
             
             string scaleInfo = "";
-            if (ActivePresentation.Scales.Count > 0) 
+            if (ActivePresentation.Scales != null && ActivePresentation.Scales.Count > 0) 
             {
-                var activeScale = ActivePresentation.Scales[0];
+                var activeScale = ActivePresentation.Scales.GetObjects()[0];
                 scaleInfo = $"(Scale: Preparation bounds: [{activeScale.PrepLowBound}-{activeScale.PrepUpBound}], Enum bounds: [{activeScale.EnumLowBound}-{activeScale.EnumUpBound}]) Adjustments: Mul: {activeScale.MultiplyFactor}, Add: {activeScale.AddConstOffset}";
             }
 
@@ -53,23 +54,23 @@ namespace Diogenes.Forms
                 return;
             }
 
-            var presType = ActivePresentation.GetDataType();
+            var presType = ActivePresentation.GetPresType();
             UpdateLabel();
 
             switch (presType) 
             {
-                case DiagPresentation.PresentationTypes.PresBasicEnum:
+                case PresentationTypes.PresBasicEnum:
                     {
                         cbEnum.Items.Clear();
-                        cbEnum.Items.AddRange(ActivePresentation.BasicEnums.Select(x => x.EnumName).ToArray());
+                        cbEnum.Items.AddRange(ActivePresentation.Choices.Select(x => x.Text.Text).ToArray());
 
                         // parse and set current value
                         // value can be between 1-32 bits, promote to 32 bit while working here, then mask again when fetching result
                         int sourceValue = BitArrayExtension.PromoteToInt32(SourceBits, bigEndian: true);
                         bool foundValueMatchingEnum = false;
-                        for (int i = 0; i < ActivePresentation.BasicEnums.Count; i++) 
+                        for (int i = 0; i < ActivePresentation.Choices.Count; i++) 
                         {
-                            if (ActivePresentation.BasicEnums[i].EnumValue == sourceValue) 
+                            if (ActivePresentation.Choices[i].Value == sourceValue) 
                             {
                                 cbEnum.SelectedIndex = i;
                                 foundValueMatchingEnum = true;
@@ -87,31 +88,31 @@ namespace Diogenes.Forms
                         cbEnum.Visible = true;
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresBytes: 
+                case PresentationTypes.PresBytes: 
                     {
                         txtValue.Text = BitUtility.BytesToHex(BitArrayExtension.ToBytes(SourceBits), true);
                         txtValue.Visible = true;
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresIEEEFloat: 
+                case PresentationTypes.PresIEEEFloat: 
                     {
                         txtValue.Text = BitArrayExtension.ToFloat(SourceBits, true).ToString();
                         txtValue.Visible = true;
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresInt:
+                case PresentationTypes.PresInt:
                     {
                         int val = BitArrayExtension.PromoteToInt32(SourceBits, bigEndian: true);
                         txtValue.Text = val.ToString();
                         txtValue.Visible = true;
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresScaledDecimal:
+                case PresentationTypes.PresScaledDecimal:
                     {
-                        if (pres.Scales.Count == 1)
+                        if (pres.Scales != null && pres.Scales.Count == 1)
                         {
                             // see DL_Oelresettabelle_ASSYST, km stand
-                            var activeScale = pres.Scales[0];
+                            var activeScale = pres.Scales.GetObjects()[0];
                             decimal val = BitArrayExtension.PromoteToInt32(SourceBits, bigEndian: true);
                             val /= (decimal)activeScale.MultiplyFactor;
                             val -= (decimal)activeScale.AddConstOffset;
@@ -124,15 +125,15 @@ namespace Diogenes.Forms
                         }
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresScaledEnum:
+                case PresentationTypes.PresScaledEnum:
                     {
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresString:
+                case PresentationTypes.PresString:
                     {
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresUInt:
+                case PresentationTypes.PresUInt:
                     {
                         uint val = BitArrayExtension.PromoteToUInt32(SourceBits, bigEndian: true);
                         txtValue.Text = val.ToString();
@@ -147,7 +148,7 @@ namespace Diogenes.Forms
 
         private void cbEnum_SelectedIndexChanged(object sender, EventArgs e)
         {
-            int newValue = ActivePresentation.BasicEnums[cbEnum.SelectedIndex].EnumValue;
+            int newValue = ActivePresentation.Choices[cbEnum.SelectedIndex].Value;
             BitArray newValueBits = BitArrayExtension.ToBitArray(newValue, true);
             // length of new value will be either equal or longer than the original buffer
             // copy as much as the original buffer will fit
@@ -171,10 +172,10 @@ namespace Diogenes.Forms
 
             
 
-            var presType = ActivePresentation.GetDataType();
+            var presType = ActivePresentation.GetPresType();
             switch (presType)
             {
-                case DiagPresentation.PresentationTypes.PresBytes:
+                case PresentationTypes.PresBytes:
                     {
                         if (BitUtility.TryParseHex(txtValue.Text, out byte[] hexValue))
                         {
@@ -187,7 +188,7 @@ namespace Diogenes.Forms
                         }
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresIEEEFloat:
+                case PresentationTypes.PresIEEEFloat:
                     {
                         if (float.TryParse(txtValue.Text, out float result)) 
                         {
@@ -196,11 +197,11 @@ namespace Diogenes.Forms
                         }
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresScaledDecimal:
+                case PresentationTypes.PresScaledDecimal:
                     {
-                        if (ActivePresentation.Scales.Count == 1)
+                        if (ActivePresentation.Scales != null && ActivePresentation.Scales.Count == 1)
                         {
-                            var activeScale = ActivePresentation.Scales[0];
+                            var activeScale = ActivePresentation.Scales.GetObjects()[0];
                             if (decimal.TryParse(txtValue.Text, out decimal val))
                             {
                                 val += (decimal)activeScale.AddConstOffset;
@@ -215,7 +216,7 @@ namespace Diogenes.Forms
                         }
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresInt:
+                case PresentationTypes.PresInt:
                     {
                         if (int.TryParse(txtValue.Text, out int val))
                         {
@@ -224,7 +225,7 @@ namespace Diogenes.Forms
                         }
                         break;
                     }
-                case DiagPresentation.PresentationTypes.PresUInt:
+                case PresentationTypes.PresUInt:
                     {
                         if (uint.TryParse(txtValue.Text, out uint val))
                         {

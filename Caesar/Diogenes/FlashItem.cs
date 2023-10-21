@@ -15,7 +15,7 @@ namespace Diogenes
         FlashTable Table { get { return Area.FlashTables[0]; } }
 
         public string Key { get { return Table.FlashKey; } }
-        public int Priority { get { return Table.Priority; } }
+        public int Priority { get { return (Table.Priority ?? 0); } }
         public string Job { get { return Table.FlashService; } }
         public string Qualifier { get { return Table.Qualifier; } }
         public string AllowedECU { get { return Table.AllowedECUs[0]; } }
