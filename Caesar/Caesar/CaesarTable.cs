@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -26,7 +25,7 @@ namespace Caesar
             return new List<T>(Objects);
         }
 
-        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public int Count => Objects.Count;
 
         public T? GetSingle(int index)

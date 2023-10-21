@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -34,9 +34,9 @@ namespace Caesar
         public int BitLength;
 
 
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         private static readonly byte[] FragmentLengthTable = new byte[] { 0, 1, 4, 8, 0x10, 0x20, 0x40 };
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public VCDomain ParentDomain;
 
         public VCFragment()
@@ -107,11 +107,11 @@ namespace Caesar
                 throw new NotImplementedException("The disassembly throws an exception when fragmentImplementationLower > 6, copying verbatim");
             }
 
-            if (ImplementationUpper > 0x420 && InfoPoolIndex != null && parentEcu.GlobalInternalPresentations != null)
+            if (ImplementationUpper > 0x420 && InfoPoolIndex != null && parentEcu.GlobalPrepPresentations != null)
             {
                 // Console.WriteLine($"fragment value upper: {fragmentImplementationUpper:X}");
 
-                DiagPresentation pres = parentEcu.GlobalInternalPresentations.GetObjects()[(int)InfoPoolIndex];
+                DiagPresentation pres = parentEcu.GlobalPrepPresentations.GetObjects()[(int)InfoPoolIndex];
                 /*
                 // depreciate use of ReadCBFWithOffset
                 poolReader.BaseStream.Seek(ecu.Info_EntrySize * InfoPoolIndex, SeekOrigin.Begin);

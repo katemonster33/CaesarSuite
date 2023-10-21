@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -14,8 +14,11 @@ namespace Caesar
         public CTFHeader CaesarCTFHeader;
 
         public byte[] FileBytes = new byte[] { };
+        public uint ProvidedChecksum = 0;
+		
         public CaesarFlashContainer(byte[] fileBytes)
         {
+            CaesarCTFHeader = new CTFHeader();
             FileBytes = fileBytes;
             // from DIOpenCFF
             using (CaesarReader reader = new CaesarReader(new MemoryStream(fileBytes, 0, FileBytes.Length, false, true)))
@@ -32,15 +35,18 @@ namespace Caesar
                 {
                     Console.WriteLine($"WARNING: Checksum mismatch : computed/provided: {computedChecksum:X8}/{providedChecksum:X8}");
                 }
-                ReadFlashCFF(reader); // fix this
+				ProvidedChecksum = providedChecksum;
+				
+                CaesarFlashHeader = new FlashHeader(reader);
+				
                 ReadCTF(reader);
             }
         }
         void ReadCTF(CaesarReader fileReader)
         {
-            Debug.Assert(CaesarFlashHeader.CTFHeaderTable != null, "No idea how to handle nonexistent ctf header");
+            Debug.Assert(CaesarFlashHeader.LanguageHeaderTable != null, "No idea how to handle nonexistent ctf header");
             
-            long ctfOffset = CaesarFlashHeader.BaseAddress + (long)CaesarFlashHeader.CTFHeaderTable;
+            long ctfOffset = CaesarFlashHeader.BaseAddress + (long)CaesarFlashHeader.LanguageHeaderTable;
             ///CaesarCTFHeader = new CTFHeader(fileReader, ctfOffset, CaesarFlashHeader.CffHeaderSize);
         }
 
@@ -48,11 +54,6 @@ namespace Caesar
         public uint ReadFileChecksum(byte[] fileBytes)
         {
             return BitConverter.ToUInt32(fileBytes, fileBytes.Length - 4);
-        }
-
-        void ReadFlashCFF(CaesarReader fileReader)
-        {
-            CaesarFlashHeader = new FlashHeader(fileReader);
         }
 
         public static void ExportCFFMemorySegments(string filePath) 
@@ -120,47 +121,6 @@ namespace Caesar
             {
                 File.WriteAllBytes(mergePath, mergeBytes);
             }
-        }
-
-        public void SpliceCFFFile(string filePath)
-        {
-            string? directory = Path.GetDirectoryName(filePath);
-
-            Console.WriteLine($"Starting CFF splicer..");
-            byte[] flashContainer = File.ReadAllBytes(filePath);
-            CaesarFlashContainer container = new CaesarFlashContainer(flashContainer);
-
-            using (BinaryReader reader = new BinaryReader(new MemoryStream(flashContainer)))
-            {
-                foreach (FlashDataBlock db in container.CaesarFlashHeader.DataBlocks)
-                {
-                    Console.WriteLine($"FlashDataBlock: {db.Qualifier}");
-                    long fileCursor = 0;
-                    foreach (FlashSegment seg in db.FlashSegments)
-                    {
-                        // check: which fields are mutable when splicing
-
-                        long offset =
-                            (long)(db.FlashData ?? 0) + // somewhat mutable : probably if there's more than 1 datablock, this value will be nonzero
-                            container.CaesarFlashHeader.CffHeaderSize + // constant
-                            container.CaesarFlashHeader.LanguageBlockLength ?? 0 + // constant
-                            fileCursor + // mutable, see below
-                            0x414; // constant
-
-                        fileCursor += seg.SegmentLength ?? 0; // mutable because of segment length
-
-                        Console.WriteLine($"Segment: {seg.SegmentName} mapped to 0x{seg.FromAddress:X} with size 0x{seg.SegmentLength:X}");
-                        reader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                        if (seg.SegmentLength != null)
-                        {
-                            byte[] fileBytes = reader.ReadBytes((int)seg.SegmentLength);
-
-                            File.WriteAllBytes($"{directory}\\{db.Qualifier}_{seg.FromAddress:X}.bin", fileBytes);
-                        }
-                    }
-                }
-            }
-            Console.WriteLine($"Exported segments can be found at {directory}");
         }
 
     }

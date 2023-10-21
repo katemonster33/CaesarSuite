@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -46,7 +46,8 @@ namespace Caesar
                     return ecuInt.ComParameterNames[(int)ComParamIndex];
                 }
             }
-            return "CP_UNKNOWN_PARAM";
+			throw new Exception("Invalid communication parameter : parent interface has no matching key");
+            // return "CP_UNKNOWN_PARAM";
         }
 
         public void Restore(CTFLanguage language) 
@@ -75,6 +76,45 @@ namespace Caesar
             if (Dump != null && DumpSize == 4)
             {
                 ComParamValue = BitConverter.ToInt32(Dump, 0);
+            }
+            else 
+            {
+                throw new Exception("Unhandled dump in comparam");
+            }
+        }
+		
+		public void InsertIntoEcu(ECU parentEcu)
+        {
+            // KW2C3PE uses a different parent addressing style
+            int parentIndex = -1;
+            if (ParentInterfaceIndex != null)
+            {
+                parentIndex = (int)ParentInterfaceIndex;
+            }
+            else if (SubinterfaceIndex != null)
+            {
+                parentIndex = (int)SubinterfaceIndex;
+            }
+            else return;
+            if (parentEcu.ECUInterfaceSubtypes != null)
+            {
+                if (ParentInterfaceIndex >= parentEcu.ECUInterfaceSubtypes.Count)
+                {
+                    throw new Exception("ComParam: tried to assign to nonexistent interface");
+                }
+                else
+                {
+                    // apparently it is possible to insert multiple of the same comparams..?
+                    var parentList = parentEcu.ECUInterfaceSubtypes.GetObjects()[parentIndex].CommunicationParameters;
+                    if (parentList.Count(x => x.ComParamName == ComParamName) > 0)
+                    {
+                        Console.WriteLine($"ComParam with existing key already exists, skipping insertion: {ComParamName} new: {ComParamValue}");
+                    }
+                    else
+                    {
+                        parentList.Add(this);
+                    }
+                }
             }
         }
     }

@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,14 +10,14 @@ namespace Caesar
     public abstract class CaesarObject
     {
         protected CaesarContainer? Container;
-        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         protected CaesarObject? ParentObject { get; set; }
 
         // object's address relative to the last parent CaesarObject, this is what we read
         public int RelativeAddress { get; set; } = -1;
 
         // actual offset in the file to be read from
-        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public int AbsoluteAddress { get; protected set; }
 
         public int PoolIndex { get; set; } = 0;

@@ -1,4 +1,3 @@
-﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,7 +14,7 @@ namespace Caesar
         public CFFHeader CaesarCFFHeader;
         public CTFHeader CaesarCTFHeader;
         public List<ECU> CaesarECUs = new List<ECU>();
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public byte[] FileBytes = new byte[] { };
 
         public uint FileChecksum;
@@ -55,6 +54,25 @@ namespace Caesar
                 {
                     throw new NotImplementedException($"Unhandled Caesar version: {CaesarCFFHeader.CaesarVersion}");
                 }
+				
+				int caesarStringTableOffset = CaesarCFFHeader.CffHeaderSize + 0x410 + 4;
+				int formEntryTable = caesarStringTableOffset + (CaesarCFFHeader.StringPoolSize ?? 0);
+					
+				// fixme: relook at this, might be the correct way to load fm?
+
+				//Console.WriteLine($"{nameof(caesarStringTableOffset)} : 0x{caesarStringTableOffset:X}");
+				//Console.WriteLine($"{nameof(afterStringTableOffset)} : 0x{afterStringTableOffset:X}");
+
+				/*
+				if (CaesarCFFHeader.FormEntries > 0)
+				{
+					int formOffsetTable = CaesarCFFHeader.unk2RelativeOffset + formEntryTable;
+					int formOffsetTableSize = CaesarCFFHeader.FormEntrySize * CaesarCFFHeader.FormEntries;
+					Console.WriteLine($"after string table block (*.fm) is present: {nameof(formEntryTable)} : 0x{formEntryTable:X}\n\n");
+					Console.WriteLine($"{nameof(formOffsetTable)} : 0x{formOffsetTable:X}\n\n");
+					Console.WriteLine($"{nameof(formOffsetTableSize)} : 0x{formOffsetTableSize:X}\n\n");
+				}
+				*/
                 // language is the highest priority since all our strings come from it
                 ReadECU(reader);
 
@@ -68,64 +86,6 @@ namespace Caesar
 //#endif
         }
 
-        public static string SerializeContainer(CaesarContainer container) 
-        {
-            return JsonConvert.SerializeObject(container, typeof(CaesarContainer), new JsonSerializerSettings() { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore });
-        }
-
-        public static CaesarContainer? DeserializeContainer(string json) 
-        {
-            CaesarContainer? container = JsonConvert.DeserializeObject<CaesarContainer>(json);
-            // at this point, the container needs to restore its internal object references before it is fully usable
-            if (container != null)
-            {
-                CTFLanguage language = container.CaesarCTFHeader.CtfLanguages.GetObjects()[0];
-                foreach (ECU ecu in container.CaesarECUs)
-                {
-                    ecu.Restore(language, container);
-                }
-            }
-
-            return container;
-        }
-
-        public static CaesarContainer? DeserializeCompressedContainer(byte[] containerBytes)
-        {
-            string json = Encoding.UTF8.GetString(Inflate(containerBytes));
-            return DeserializeContainer(json);
-        }
-        public static byte[] SerializeCompressedContainer(CaesarContainer container)
-        {
-            return Deflate(Encoding.UTF8.GetBytes(SerializeContainer(container)));
-        }
-
-
-        private static byte[] Inflate(byte[] input)
-        {
-            using (MemoryStream ms = new MemoryStream(input))
-            {
-                using (MemoryStream msInner = new MemoryStream())
-                {
-                    using (DeflateStream z = new DeflateStream(ms, CompressionMode.Decompress))
-                    {
-                        z.CopyTo(msInner);
-                    }
-                    return msInner.ToArray();
-                }
-            }
-        }
-        private static byte[] Deflate(byte[] input)
-        {
-            using (MemoryStream compressedStream = new MemoryStream())
-            {
-                DeflateStream deflateStream = new DeflateStream(compressedStream, CompressionLevel.Optimal, true);
-                deflateStream.Write(input, 0, input.Length);
-                deflateStream.Close();
-                return compressedStream.ToArray();
-            }
-        }
-
-
         public static bool VerifyChecksum(byte[] fileBytes, out uint checksum) 
         {
             uint computedChecksum = CaesarReader.ComputeFileChecksumLazy(fileBytes);
@@ -137,13 +97,6 @@ namespace Caesar
                 return false;
             }
             return true;
-        }
-
-        public static string GetCaesarVersionString()
-        {
-            System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
-            System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location);
-            return fvi.FileVersion ?? string.Empty;
         }
 
         public static uint ReadFileChecksum(byte[] fileBytes) 
@@ -225,40 +178,5 @@ namespace Caesar
             //    }
             //}
         }
-
-        public string GetFileSize() 
-        {
-            return BytesToString(FileBytes.Length);
-        }
-
-        private static string BytesToString(long byteCount)
-        {
-            string[] suf = { " B", " KB", " MB", " GB", " TB", " PB", " EB" }; //Longs run out around EB
-            if (byteCount == 0)
-            {
-                return "0" + suf[0];
-            }
-            long bytes = Math.Abs(byteCount);
-            int place = Convert.ToInt32(Math.Floor(Math.Log(bytes, 1024)));
-            double num = Math.Round(bytes / Math.Pow(1024, place), 3);
-            return (Math.Sign(byteCount) * num).ToString() + suf[place];
-        }
-
-        public override bool Equals(object? obj)
-        {
-            var container = obj as CaesarContainer;
-
-            if (container == null) 
-            {
-                return false;
-            }
-            return this.FileChecksum == container.FileChecksum;
-        }
-
-        public override int GetHashCode()
-        {
-            return (int)FileChecksum;
-        }
-
     }
 }

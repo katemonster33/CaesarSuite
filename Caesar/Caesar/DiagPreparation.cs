@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Collections;
 
 namespace Caesar
 {
@@ -13,9 +14,9 @@ namespace Caesar
         public CaesarStringReference? Name;
         public int? Unk1;
         public int? Unk2;
-        public int? AlternativeBitWidth;
+        public int? SizeForBitTypes;
         public int? IITOffset;
-        private int? InfoPoolIndex;
+        private int? PrepPresPoolIndex;
         private int? PresPoolIndex;
         public DiagPresentation? Presentation;
         public int? Field1E;
@@ -25,11 +26,13 @@ namespace Caesar
         public byte[]? Dump;
 
         public int BitPosition;
+        public BitArray? Content;
 
         public ushort ModeConfig;
 
         public int SizeInBits = 0;
 
+        [System.Text.Json.Serialization.JsonIgnore]
         public static readonly byte[] IntegerSizeMapping = new byte[] { 0x00, 0x01, 0x04, 0x08, 0x10, 0x20, 0x40 };
 
         public InferredDataType FieldType;
@@ -38,7 +41,7 @@ namespace Caesar
         {
             UnassignedType,
             IntegerType,
-            NativeInfoPoolType,
+            PrepPresentationType,
             NativePresentationType,
             UnhandledITType,
             UnhandledSP17Type,
@@ -46,10 +49,83 @@ namespace Caesar
             BitDumpType,
             ExtendedBitDumpType,
         }
+		
+        public DiagPreparation DeepCopy()
+        {
+            DiagPreparation result = new DiagPreparation { };
+            result.Qualifier = $"{Qualifier}";
+            result.Name = Name;
+            result.Unk1 = Unk1;
+            result.Unk2 = Unk2;
+            result.SizeForBitTypes = SizeForBitTypes;
+            result.IITOffset = IITOffset;
+            result.PrepPresPoolIndex = PrepPresPoolIndex;
+            result.PresPoolIndex = PresPoolIndex;
+            result.Field1E = Field1E;
+            result.SystemParam = SystemParam;
+            result.DumpMode = DumpMode;
+            if (Dump != null)
+            {
+                result.Dump = Dump.ToArray();
+            }
+
+            result.BitPosition = BitPosition;
+            result.ModeConfig = ModeConfig;
+            result.SizeInBits = SizeInBits;
+            result.FieldType = FieldType;
+
+            // indirect
+            if (Content != null)
+            {
+                result.Content = new BitArray(Content);
+            }
+            return result;
+        }
 
         public void Restore(DiagService parentDiagService, ECU parentEcu) 
         {
             SetSizeInBits(parentDiagService, parentEcu);
+			            
+			Content = new BitArray(SizeInBits);
+
+            FillContentBitarrayWithDumpData();
+        }
+		
+        private void FillContentBitarrayWithDumpData() 
+        {
+            // mutable buffer to be used when executing a diagservice
+            // is dumpmode some sort of type data that we might have already figured out somewhere else?
+
+            if (DumpMode == 2 && Dump != null) // 2: int-like
+            {
+                if (Dump.Length == 0) 
+                {
+                    // nothing to do here
+                    return;
+                }
+                if (Dump.Length > 4) 
+                {
+                    throw new Exception($"DiagPreparation: int-like dump should not exceed 32bits");
+                }
+
+                // dump is in LE, but parameter is delivered as BE, conversion is required
+                int dumpAsInt = BitArrayExtension.PromoteToInt32(new BitArray(Dump), false); // source is LE
+                BitArray rawDump = BitArrayExtension.ToBitArray(dumpAsInt, true, SizeInBits); // dest is BE
+
+                // copy as much bits as possible into our correctly-sized content buffer
+                // since data is now in BE, left-side bytes should be discarded; copy from right to left
+                if(Content != null)
+                {
+                    int maxLength = Math.Min(rawDump.Length, Content.Length);
+                    for (int i = 0; i < maxLength; i++)
+                    {
+                        Content[Content.Length - i - 1] = rawDump[rawDump.Length - i - 1];
+                    }
+                }
+
+                // if the dump has a sign bit somewhere, this will get hairy
+                // haven't seen that yet though
+            }
         }
 
         // look at.. DIInternalRetrieveConstParamPreparation
@@ -82,10 +158,10 @@ namespace Caesar
                     resultBitSize = IntegerSizeMapping[modeL];
                     FieldType = InferredDataType.IntegerType;
                 }
-                else if (modeH == 0x330 && AlternativeBitWidth != null)
+                else if (modeH == 0x330 && SizeForBitTypes != null)
                 {
                     // this behavior is also okay
-                    resultBitSize = (int)AlternativeBitWidth; // inPres + 20
+                    resultBitSize = (int)SizeForBitTypes; // inPres + 20
                     FieldType = InferredDataType.BitDumpType;
                 }
                 else if (modeH == 0x340)
@@ -103,12 +179,12 @@ namespace Caesar
                 if (SystemParam == null)
                 {
                     // apparently both 0x2000 and 0x8000 source from different pools, but use the same PRESENTATION structure
-                    if (modeE == 0x8000 && InfoPoolIndex != null)
+                    if (modeE == 0x8000 && PrepPresPoolIndex != null)
                     {
-                        FieldType = InferredDataType.NativeInfoPoolType;
-                        if (parentEcu.GlobalInternalPresentations != null)
+                        FieldType = InferredDataType.PrepPresentationType;
+                        if (parentEcu.GlobalPrepPresentations != null)
                         {
-                            Presentation = parentEcu.GlobalInternalPresentations.GetObjects()[(int)InfoPoolIndex];
+                            Presentation = parentEcu.GlobalPrepPresentations.GetObjects()[(int)PrepPresPoolIndex];
                             resultBitSize = Presentation.GetBitSize();
                         }
                     }
@@ -141,7 +217,7 @@ namespace Caesar
                             int resultByteSize = (parentDiagService.RequestBytes.Length & 0xFF) - (BitPosition / 8);
                             resultBitSize = resultByteSize * 8;
                             FieldType = InferredDataType.ExtendedBitDumpType;
-                            // Console.WriteLine($"0x{modeH:X} debug for {qualifier} (L: {modeL}) (BitWidth: {AlternativeBitWidth} SP: {SystemParam}), sz: {resultBitSize} b ({resultBitSize/8} B)");
+                            // Console.WriteLine($"0x{modeH:X} debug for {qualifier} (L: {modeL}) (BitWidth: {SizeForBitTypes} SP: {SystemParam}), sz: {resultBitSize} b ({resultBitSize/8} B)");
                         }
                         else if (reducedSysParam == 17 && parentEcu.GlobalDiagServices != null)
                         {
@@ -197,17 +273,17 @@ namespace Caesar
                         FieldType = InferredDataType.IntegerType;
                         resultBitSize = IntegerSizeMapping[modeL];
                     }
-                    else if (modeH == 0x430 && AlternativeBitWidth != null)
+                    else if (modeH == 0x430 && SizeForBitTypes != null)
                     {
                         // mode 0x430 is nonstandard and doesn't seem to exist in the function that I was disassembling
                         /*
-                            AlternativeBitWidth : 128
+                            SizeForBitTypes : 128
                             SystemParam : 37
                             
                             See 0x320 vs 0x330, seems to be similar
                         */
 
-                        resultBitSize = (int)AlternativeBitWidth; // inPres + 20
+                        resultBitSize = (int)SizeForBitTypes; // inPres + 20
                         FieldType = InferredDataType.BitDumpType;
                     }
                     else
@@ -228,10 +304,10 @@ namespace Caesar
                 // guessed
                 if (verbose)
                 {
-                    Console.WriteLine($"Unsupported 0x{modeH:X} behavior for {qualifier} (L: {modeL}) (BitWidth: {AlternativeBitWidth} ByteWidth: {SystemParam})");
+                    Console.WriteLine($"Unsupported 0x{modeH:X} behavior for {qualifier} (L: {modeL}) (BitWidth: {SizeForBitTypes} ByteWidth: {SystemParam})");
                 }
                 //PrintDebug();
-                resultBitSize = AlternativeBitWidth; // alternate bit width is 128 which should be a nice 16 bytes
+                resultBitSize = SizeForBitTypes; // alternate bit width is 128 which should be a nice 16 bytes
             }
             else if (modeH > 0x430)
             {
@@ -261,9 +337,9 @@ namespace Caesar
             Console.WriteLine($"{nameof(Name)} : {Name}");
             Console.WriteLine($"{nameof(Unk1)} : {Unk1}");
             Console.WriteLine($"{nameof(Unk2)} : {Unk2}");
-            Console.WriteLine($"{nameof(AlternativeBitWidth)} : {AlternativeBitWidth}");
+            Console.WriteLine($"{nameof(SizeForBitTypes)} : {SizeForBitTypes}");
             Console.WriteLine($"{nameof(IITOffset)} : {IITOffset}");
-            Console.WriteLine($"{nameof(InfoPoolIndex)} : {InfoPoolIndex}");
+            Console.WriteLine($"{nameof(PrepPresPoolIndex)} : {PrepPresPoolIndex}");
             Console.WriteLine($"{nameof(PresPoolIndex)} : {PresPoolIndex}");
             Console.WriteLine($"{nameof(Field1E)} : {Field1E}");
             Console.WriteLine($"{nameof(SystemParam)} : {SystemParam}");
@@ -289,9 +365,9 @@ namespace Caesar
             Name = reader.ReadBitflagStringRef(ref Bitflags, container);
             Unk1 = reader.ReadBitflagUInt8(ref Bitflags);
             Unk2 = reader.ReadBitflagUInt8(ref Bitflags);
-            AlternativeBitWidth = reader.ReadBitflagInt32(ref Bitflags);
+            SizeForBitTypes = reader.ReadBitflagInt32(ref Bitflags);
             IITOffset = reader.ReadBitflagInt32(ref Bitflags);
-            InfoPoolIndex = reader.ReadBitflagInt32(ref Bitflags);
+            PrepPresPoolIndex = reader.ReadBitflagInt32(ref Bitflags);
             PresPoolIndex = reader.ReadBitflagInt32(ref Bitflags);
             Field1E = reader.ReadBitflagInt32(ref Bitflags);
             SystemParam = reader.ReadBitflagInt16(ref Bitflags);
@@ -302,6 +378,15 @@ namespace Caesar
                 // dump is actually a string, use
                 // CaesarReader.ReadBitflagDumpWithReaderAsString
             }
+            /*
+            // debug: find other dump types
+            if ((DumpMode != 2) && (DumpSize != 0))
+            {
+                // ic204 "DL_Menu_Dimming_Characteristic_Set" Dimmwert_Step_1 dumpmode: 3
+                // ic204 "RT_Check_Routine_Start_CRC_Check" No_Of_CRC_Bytes dumpmode: 4
+                Console.WriteLine($"{Qualifier} dumpmode is not 2, val: {DumpMode}");
+            }
+            */
             Dump = reader.ReadBitflagDumpWithReader(ref Bitflags, DumpSize, AbsoluteAddress);
         }
     }

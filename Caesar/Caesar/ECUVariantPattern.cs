@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +10,7 @@ namespace Caesar
 {
     public class ECUVariantPattern : CaesarObject
     {
+        // 0x04 [4,4,4,4,4,4,4,2,2,2,2,1,1,1,1,1,5,1,1,1,1,4,4,4,4,4],
 
         public int? UnkBufferSize;
 
@@ -44,7 +45,13 @@ namespace Caesar
         public int? UdsVendorID;
         public int? PatternType;
 
-        public int? VariantID;
+        public int VariantID 
+        { 
+            get 
+            {
+                return KwpVendorID ?? UdsVendorID ?? 0;
+            }
+        }
 
         public void Restore() 
         {
@@ -103,7 +110,7 @@ namespace Caesar
             Unk14 = reader.ReadBitflagUInt8(ref Bitflags);
             Unk15 = reader.ReadBitflagUInt8(ref Bitflags);
 
-            EcuId = reader.ReadBitflagRawBytes(ref Bitflags, 4);
+            EcuId = reader.ReadBitflagRawBytes(ref Bitflags, 4); // @prj's fix : https://github.com/jglim/CaesarSuite/issues/57
 
             Unk17 = reader.ReadBitflagUInt8(ref Bitflags);
             Unk18 = reader.ReadBitflagUInt8(ref Bitflags);
@@ -114,10 +121,11 @@ namespace Caesar
 
             Unk22 = reader.ReadBitflagInt32(ref Bitflags);
             Unk23 = reader.ReadBitflagInt32(ref Bitflags);
+			
+			// upper 2 bytes (e.g. 00 02) indicate the expected session? maybe boot: 3, diag: 2
+            // lower 2 bytes are for the variant id
             UdsVendorID = reader.ReadBitflagInt32(ref Bitflags);
             PatternType = reader.ReadBitflagInt32(ref Bitflags);
-
-            VariantID = UdsVendorID == 0 ? KwpVendorID : UdsVendorID;
         }
     }
 }

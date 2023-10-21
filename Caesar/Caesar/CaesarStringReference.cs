@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,7 +8,7 @@ namespace Caesar
 {
     public class CaesarStringReference
     {
-        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public CaesarContainer? Container { get; set; }
         public int Index { get; set; }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -97,7 +97,7 @@ namespace Caesar
         public CaesarTable<DiagPreparation>? InputPreparations;
         public CaesarTable<DiagOutPreparationList>? OutputPreparations;
 
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public ECU ParentECU;
 
         public DiagService() 
@@ -165,6 +165,14 @@ namespace Caesar
                     prep.Restore(this, parentEcu);
                 }
             }
+			// this is a reserved qualifier for a system function
+			if (DiagComParameters != null && Qualifier == parentEcu.EcuInitializationDiagServiceName)
+			{
+				foreach(var cp in DiagComParameters.GetObjects())
+				{
+					cp.InsertIntoEcu(parentEcu);
+				}
+			}
         }
 
         protected override void ReadData(CaesarReader reader, CaesarContainer container)
@@ -187,6 +195,7 @@ namespace Caesar
             SecurityAccessLevel = reader.ReadBitflagUInt16(ref Bitflags);
 
             DiagComParameters = reader.ReadBitflagSubTableAlt<ComParameter>(this, container);
+			
 
             Q_Count = reader.ReadBitflagInt32(ref Bitflags);
             Q_Offset = reader.ReadBitflagInt32(ref Bitflags);
@@ -305,81 +314,3 @@ namespace Caesar
         }
     }
 }
-
-
-
-
-/*
-// originally EnvironmentContext, removed because of overlap
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Caesar
-{
-    public class EnvironmentContext
-    {
-        // see : const char *__cdecl DIGetComfortErrorCode(DI_ECUINFO *ecuh, unsigned int dtcIndex)
-        public string Qualifier;
-
-        public long BaseAddress;
-        public int PoolIndex;
-        public int Name_CTF;
-        public int Description_CTF;
-        public int ServiceTypeMaybe;
-        public int AccessLevelType_Maybe;
-        public int AccessLevelType_Maybe2;
-        public int PresentationTableCount;
-        public int PresentationTableOffset;
-        public int PresentationTableRowSize_Maybe; // see diagservice for similar layout, seems unused (uint16)
-
-        public ECU ParentECU;
-        CTFLanguage Language;
-
-        public EnvironmentContext(BinaryReader reader, CTFLanguage language, long baseAddress, int poolIndex, ECU parentEcu)
-        {
-            ParentECU = parentEcu;
-            PoolIndex = poolIndex;
-            BaseAddress = baseAddress;
-            Language = language;
-            reader.BaseStream.Seek(baseAddress, SeekOrigin.Begin);
-
-            // layout seems very similar to DiagService
-            ulong bitflags = reader.ReadUInt32();
-            ulong bitflagsExtended = reader.ReadUInt32();
-
-            Qualifier = CaesarReader.ReadBitflagStringWithReader(ref bitflags, reader, baseAddress);
-            Name_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-            Description_CTF = CaesarReader.ReadBitflagInt32(ref bitflags, reader, -1);
-
-            ServiceTypeMaybe = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            AccessLevelType_Maybe = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-            AccessLevelType_Maybe2 = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-
-            // doesn't seem to be set for any files in my library
-            for (int i = 0; i < 14; i++) 
-            {
-                if (CaesarReader.CheckAndAdvanceBitflag(ref bitflags))
-                {
-                    throw new Exception("Sorry, The parser for EnvironmentContext has encountered an unknown bitflag; please open an issue and indicate your CBF file name.");
-                }
-            }
-
-            // these describe the table to the presentation
-            PresentationTableCount = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            PresentationTableOffset = CaesarReader.ReadBitflagInt32(ref bitflags, reader);
-            PresentationTableRowSize_Maybe = CaesarReader.ReadBitflagInt16(ref bitflags, reader);
-
-            // ... looks like DiagService?!
-        }
-
-        public void PrintDebug()
-        {
-            Console.WriteLine(Qualifier);
-        }
-    }
-}
-*/

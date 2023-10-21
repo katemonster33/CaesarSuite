@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -34,7 +34,10 @@ namespace Caesar
             ComParamCount = reader.ReadBitflagInt32(ref Bitflags);
             ComParamListOffset = reader.ReadBitflagInt32(ref Bitflags);
             Unk6 = reader.ReadBitflagInt16(ref Bitflags);
-
+			
+            // absolute file offset to the comparam string table
+            // this points to an array of integers
+            // each of these ints is added to the fileoffset to get to the actual string
 
             if (ComParamListOffset != null && ComParamCount != null)
             {

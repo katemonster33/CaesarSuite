@@ -1,4 +1,4 @@
-﻿using Caesar.Enums;
+using Caesar.Enums;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -52,7 +52,7 @@ namespace Caesar
 
         public int PresentationIndex;
 
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public CTFLanguage Language;
 
 

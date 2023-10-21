@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -150,6 +150,11 @@ namespace Caesar
                     //Console.WriteLine($"String base address: 0x{stringBaseAddress:X}");
                 }
             }
+        }
+
+        public override string ToString()
+        {
+            return Qualifier;
         }
     }
 }

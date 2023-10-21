@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -37,19 +37,19 @@ namespace Caesar
 
         // these should be manually deserialized by creating references back to the parent ECU
 
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public List<VCDomain> VCDomains = new List<VCDomain>();
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public DiagService[] DiagServices = new DiagService[] { };
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public DTC[] DTCs = new DTC[] { };
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public EnvironmentContext[] EnvironmentContexts = new EnvironmentContext[] { };
 
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public ECU ParentECU;
 
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         private CTFLanguage Language;
 
         public void Restore(CTFLanguage language, ECU parentEcu)
@@ -114,7 +114,7 @@ namespace Caesar
             return ctxList;
         }
 
-        public void CreateComParameters(ECU parentEcu)
+        void CreateComParameters(ECU parentEcu)
         {
             if (ComParameters != null && parentEcu.ECUInterfaceSubtypes != null)
             {
@@ -125,20 +125,7 @@ namespace Caesar
                 }
                 foreach (var comParam in ComParameters.GetObjects())
                 {
-                    if (comParam.ParentInterfaceIndex != null && comParam.SubinterfaceIndex != null)
-                    {
-                        // KW2C3PE uses a different parent addressing style
-                        int parentIndex = (int)(comParam.ParentInterfaceIndex > 0 ? comParam.ParentInterfaceIndex : comParam.SubinterfaceIndex);
-
-                        if (comParam.ParentInterfaceIndex >= subTypes.Count)
-                        {
-                            throw new Exception("ComParam: tried to assign to nonexistent interface");
-                        }
-                        else
-                        {
-                            subTypes[parentIndex].CommunicationParameters.Add(comParam);
-                        }
-                    }
+					comParam.InsertIntoEcu(parentEcu);
                 }
             }
         }

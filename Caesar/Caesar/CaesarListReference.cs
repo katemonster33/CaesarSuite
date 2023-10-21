@@ -8,7 +8,7 @@ namespace Caesar
 {
     public class CaesarListReference<T> where T : CaesarObject, new()
     {
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public CaesarTable<T>? ReferenceTable { get; set; }
         public int Index { get; set; }
         public int Count { get; set; }

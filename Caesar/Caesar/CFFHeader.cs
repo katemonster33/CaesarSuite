@@ -1,5 +1,5 @@
-﻿using Caesar.DSC;
-using Newtonsoft.Json;
+using Caesar.DSC;
+using System.Text.Json.Serialization;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -42,7 +42,9 @@ namespace Caesar
         // DIIAddCBFFile
 
         public CFFHeader() 
-        { }
+        {
+            CaesarECUs = new CaesarTable<ECU>();
+        }
 
         public CFFHeader(CaesarReader reader, CaesarContainer container) 
         {

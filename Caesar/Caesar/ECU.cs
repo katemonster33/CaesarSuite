@@ -1,4 +1,3 @@
-﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,7 +16,7 @@ namespace Caesar
         public string? EcuXmlVersion;
         public CaesarTable<ECUInterface>? ECUInterfaces;
         public CaesarTable<ECUInterfaceSubtype>? ECUInterfaceSubtypes;
-        public string? EcuClassName;
+        public string? EcuInitializationDiagServiceName;
         public string? UnkStr7;
         public string? UnkStr8;
 
@@ -40,7 +39,7 @@ namespace Caesar
 
         public CaesarTable<DiagPresentation>? GlobalPresentations;
 
-        public CaesarTable<DiagPresentation>? GlobalInternalPresentations;
+        public CaesarTable<DiagPresentation>? GlobalPrepPresentations;
 
         private int? Unk_BlockOffset;
         private int? Unk_EntryCount;
@@ -49,10 +48,10 @@ namespace Caesar
 
         public int? Unk39;
 
-        [Newtonsoft.Json.JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public CTFLanguage Language;
 
-        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public CFFHeader CFFHeader;
 
         byte[] cachedUnkPool = new byte[] { };
@@ -130,7 +129,7 @@ namespace Caesar
                 $"ecuXmlVersion={EcuXmlVersion}, " +
                 $"{nameof(ECUInterfaces)}={ECUInterfaces}, " +
                 $"{nameof(ECUInterfaceSubtypes)}={ECUInterfaceSubtypes}, " +
-                $"ecuClassName: {EcuClassName}, " +
+                $"EcuInitializationDiagServiceName: {EcuInitializationDiagServiceName}, " +
                 $"euIdk7={UnkStr7}, " +
                 $"ecuIdk8={UnkStr8}, " +
                 $"{nameof(IgnitionRequired)}={IgnitionRequired}, " +
@@ -150,7 +149,7 @@ namespace Caesar
                 //$"{nameof(Env_BlockSize)}=0x{Env_BlockSize:X}, " +
                 $"{nameof(GlobalVCDs)}={GlobalVCDs:X}, " +
                 $"{nameof(GlobalPresentations)}={GlobalPresentations}, " +
-                $"{nameof(GlobalInternalPresentations)}={GlobalInternalPresentations}, " +
+                $"{nameof(GlobalPrepPresentations)}={GlobalPrepPresentations}, " +
                 $"{nameof(Unk_BlockOffset)}=0x{Unk_BlockOffset:X}, " +
                 $"{nameof(Unk_EntryCount)}={Unk_EntryCount}, " +
                 $"{nameof(Unk_EntrySize)}={Unk_EntrySize}, " +
@@ -177,7 +176,7 @@ namespace Caesar
             EcuXmlVersion = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
             ECUInterfaces = reader.ReadBitflagSubTableAlt<ECUInterface>(this, container);
             ECUInterfaceSubtypes = reader.ReadBitflagSubTableAlt<ECUInterfaceSubtype>(this, container);
-            EcuClassName = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
+            EcuInitializationDiagServiceName = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
             UnkStr7 = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
             UnkStr8 = reader.ReadBitflagStringWithReader(ref Bitflags, AbsoluteAddress);
 
@@ -206,7 +205,7 @@ namespace Caesar
 
             GlobalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, container);
 
-            GlobalInternalPresentations = reader.ReadBitflagTable<DiagPresentation>(this, container);
+            GlobalPrepPresentations = reader.ReadBitflagTable<DiagPresentation>(this, container);
 
             Unk_BlockOffset = reader.ReadBitflagInt32(ref Bitflags) + dataBufferOffsetRelativeToFile;
             Unk_EntryCount = reader.ReadBitflagInt32(ref Bitflags);

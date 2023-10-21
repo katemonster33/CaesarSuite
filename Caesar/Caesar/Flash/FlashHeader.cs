@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,9 +13,9 @@ namespace Caesar
         public long BaseAddress;
 
         public string? FlashName;
-        public string? FlashGenerationParams;
-        public int? Unk3;
-        public int? Unk4;
+        public string? CFFTrafoArguments;
+        public int? NameCTF;
+        public int? DescriptionCTF;
         public string? FileAuthor;
         public string? FileCreationTime;
         public string? AuthoringToolVersion;
@@ -24,18 +24,19 @@ namespace Caesar
         public string? CFFVersionString;
         public int? NumberOfFlashAreas;
         public int? FlashDescriptionTable;
-        public int? DataBlockTableCountProbably;
+        public int? DataBlockTableCount;
         public int? DataBlockRefTable;
-        public int? CTFHeaderTable;
+        public int? LanguageHeaderTable;
         public int? LanguageBlockLength;
-        public int? NumberOfECURefs;
+        public int? ECURefCount;
         public int? ECURefTable;
-        public int? UnkTableCount;
-        public int? UnkTableProbably;
-        public int? Unk15;
+        public int? SessionsCount;
+        public int? SessionsTable;
+        public int? CFFIsFromDataBase;
 
         public List<FlashDataBlock> DataBlocks = new List<FlashDataBlock>();
-        public List<FlashDescriptionHeader> DescriptionHeaders = new List<FlashDescriptionHeader>();
+        public List<FlashArea> DescriptionHeaders = new List<FlashArea>();
+        public List<FlashSession> Sessions = new List<FlashSession>();
         // DIIAddCBFFile
         /*
             21 bits active
@@ -53,28 +54,37 @@ namespace Caesar
             reader.ReadUInt16(); // unused
 
             FlashName = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
-            FlashGenerationParams = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
-            Unk3 = reader.ReadBitflagInt32(ref bitFlags);
-            Unk4 = reader.ReadBitflagInt32(ref bitFlags);
-            FileAuthor = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            CFFTrafoArguments = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+            NameCTF = reader.ReadBitflagInt32(ref bitFlags);
+            DescriptionCTF = reader.ReadBitflagInt32(ref bitFlags);
+            FileAuthor = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress); // FladenAuthor (flatbread?)
             FileCreationTime = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
             AuthoringToolVersion = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
             FTRAFOVersionString = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
             FTRAFOVersionNumber = reader.ReadBitflagInt32(ref bitFlags);
             CFFVersionString = reader.ReadBitflagStringWithReader(ref bitFlags, BaseAddress);
+			
+            // parsed
             NumberOfFlashAreas = reader.ReadBitflagInt32(ref bitFlags);
             FlashDescriptionTable = reader.ReadBitflagInt32(ref bitFlags);
-            DataBlockTableCountProbably = reader.ReadBitflagInt32(ref bitFlags);
+			
+            // parsed
+            DataBlockTableCount = reader.ReadBitflagInt32(ref bitFlags);
             DataBlockRefTable = reader.ReadBitflagInt32(ref bitFlags);
-            CTFHeaderTable = reader.ReadBitflagInt32(ref bitFlags);
+            LanguageHeaderTable = reader.ReadBitflagInt32(ref bitFlags);
             LanguageBlockLength = reader.ReadBitflagInt32(ref bitFlags);
-            NumberOfECURefs = reader.ReadBitflagInt32(ref bitFlags);
+			
+            // unparsed
+            ECURefCount = reader.ReadBitflagInt32(ref bitFlags);
             ECURefTable = reader.ReadBitflagInt32(ref bitFlags);
-            UnkTableCount = reader.ReadBitflagInt32(ref bitFlags);
-            UnkTableProbably = reader.ReadBitflagInt32(ref bitFlags);
-            Unk15 = reader.ReadBitflagUInt8(ref bitFlags);
+			
+			// parsed .. but not used
+            SessionsCount = reader.ReadBitflagInt32(ref bitFlags);
+            SessionsTable = reader.ReadBitflagInt32(ref bitFlags);
+			
+            CFFIsFromDataBase = reader.ReadBitflagUInt8(ref bitFlags);
 
-            DescriptionHeaders = new List<FlashDescriptionHeader>();
+            DescriptionHeaders = new List<FlashArea>();
             if (NumberOfFlashAreas != null && FlashDescriptionTable != null)
             {
                 for (int flashDescIndex = 0; flashDescIndex < NumberOfFlashAreas; flashDescIndex++)
@@ -83,15 +93,15 @@ namespace Caesar
                     reader.BaseStream.Seek(flashTableEntryAddress, SeekOrigin.Begin);
 
                     long flashEntryBaseAddress = (long)FlashDescriptionTable + BaseAddress + reader.ReadInt32();
-                    FlashDescriptionHeader fdh = new FlashDescriptionHeader(reader, flashEntryBaseAddress);
+                    FlashArea fdh = new FlashArea(reader, flashEntryBaseAddress);
                     DescriptionHeaders.Add(fdh);
                 }
             }
 
             DataBlocks = new List<FlashDataBlock>();
-            if (DataBlockRefTable != null && DataBlockTableCountProbably != null)
+            if (DataBlockRefTable != null && DataBlockTableCount != null)
             {
-                for (int dataBlockIndex = 0; dataBlockIndex < DataBlockTableCountProbably; dataBlockIndex++)
+                for (int dataBlockIndex = 0; dataBlockIndex < DataBlockTableCount; dataBlockIndex++)
                 {
                     long datablockEntryAddress = (long)DataBlockRefTable + BaseAddress + (dataBlockIndex * 4);
                     reader.BaseStream.Seek(datablockEntryAddress, SeekOrigin.Begin);
@@ -101,39 +111,20 @@ namespace Caesar
                     DataBlocks.Add(fdb);
                 }
             }
-        }
+			
+			Sessions = new List<FlashSession>();
+            if (SessionsTable != null && SessionsCount != null)
+            {
+                for (int sessionIndex = 0; sessionIndex < SessionsCount; sessionIndex++)
+                {
+                    long sessionEntryAddress = (int)SessionsTable + BaseAddress + (sessionIndex * 4);
+                    reader.BaseStream.Seek(sessionEntryAddress, SeekOrigin.Begin);
 
-        public void PrintDebug()
-        {
-
-            Console.WriteLine($"{nameof(FlashName)} : {FlashName}");
-            Console.WriteLine($"{nameof(FlashGenerationParams)} : {FlashGenerationParams}");
-            Console.WriteLine($"{nameof(Unk3)} : {Unk3}");
-            Console.WriteLine($"{nameof(Unk4)} : {Unk4}");
-
-            Console.WriteLine($"{nameof(FileAuthor)} : {FileAuthor}");
-            Console.WriteLine($"{nameof(FileCreationTime)} : {FileCreationTime}");
-            Console.WriteLine($"{nameof(AuthoringToolVersion)} : {AuthoringToolVersion}");
-            Console.WriteLine($"{nameof(FTRAFOVersionString)} : {FTRAFOVersionString}");
-
-            Console.WriteLine($"{nameof(FTRAFOVersionNumber)} : {FTRAFOVersionNumber}");
-            Console.WriteLine($"{nameof(CFFVersionString)} : {CFFVersionString}");
-            Console.WriteLine($"{nameof(NumberOfFlashAreas)} : {NumberOfFlashAreas}");
-            Console.WriteLine($"{nameof(FlashDescriptionTable)} : 0x{FlashDescriptionTable:X}");
-
-            Console.WriteLine($"{nameof(DataBlockTableCountProbably)} : {DataBlockTableCountProbably}");
-            Console.WriteLine($"{nameof(DataBlockRefTable)} : {DataBlockRefTable}");
-            Console.WriteLine($"{nameof(CTFHeaderTable)} : {CTFHeaderTable}");
-            Console.WriteLine($"{nameof(LanguageBlockLength)} : {LanguageBlockLength}");
-
-            Console.WriteLine($"{nameof(NumberOfECURefs)} : {NumberOfECURefs}");
-            Console.WriteLine($"{nameof(ECURefTable)} : {ECURefTable}");
-            Console.WriteLine($"{nameof(UnkTableCount)} : {UnkTableCount}");
-            Console.WriteLine($"{nameof(UnkTableProbably)} : 0x{UnkTableProbably:X}");
-
-
-            Console.WriteLine($"{nameof(Unk15)} : {Unk15}");
-
+                    long sessionBaseAddress = (int)SessionsTable + BaseAddress + reader.ReadInt32();
+                    FlashSession fs = new FlashSession(reader, sessionBaseAddress);
+                    Sessions.Add(fs);
+                }
+            }
         }
     }
 }
