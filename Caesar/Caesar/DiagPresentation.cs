@@ -517,6 +517,56 @@ namespace Caesar
                 //return result;
             }
         }
+        
+        public ConversionSelector GetConversionSelector()
+        {
+            // see DIPreparationGetConversionSelector
+            if (Scales != null && Scales.Count > 0)
+            {
+                if (Scales.Count > 1 || Scales.GetObjects().Any(scale => scale.EnumLowBound != null || scale.EnumUpBound != null))
+                {
+                    return ConversionSelector.Scale;
+                }
+                else
+                {
+                    return ConversionSelector.FactorOffset;
+                }
+            }
+            else if (Choices != null)
+            {
+                return ConversionSelector.Enumeration;
+            }
+            if (InternalDataType != InternalDataType.Unknown)
+            {
+                switch (InternalDataType)
+                {
+                    case Enums.InternalDataType.Ascii:
+                        return ConversionSelector.Ascii;
+                    case Enums.InternalDataType.Unicode:
+                        return ConversionSelector.Unicode;
+                    case Enums.InternalDataType.Float:
+                        return ConversionSelector.Ieee;
+                    case Enums.InternalDataType.Hex:
+                        return ConversionSelector.Dump;
+                    case Enums.InternalDataType.Numeric:
+                        return ConversionSelector.FactorOffset;
+                    case Enums.InternalDataType.Raw:
+                        return ConversionSelector.Raw;
+                    case Enums.InternalDataType.Invalid:
+                    default:
+                        throw new ArgumentException("InternalDataType out of range!");
+                        //if ((TypeLength_1A == null) || (Type_1C == null))
+                        //{
+                        //    Console.WriteLine("typelength and type must be valid");
+                        //    return ParamType.Unknown;
+                        //    // might be good to throw an exception here
+                        //}
+                        //return ConversionSelector.Scale;
+                }
+            }
+            else return ConversionSelector.Undefined;
+        }
+
 
         public void PrintDebug()
         {
